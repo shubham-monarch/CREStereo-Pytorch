@@ -7,17 +7,16 @@ import cv2
 from imread_from_url import imread_from_url
 
 from nets import Model
+import os
+import shutil
+from tqdm import tqdm
+
 
 device = 'cuda'
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
 def inference(left, right, model, n_iter=20):
 
-	cv2.imshow("left", left)
-	cv2.waitKey(0)
-	cv2.imshow("right", right)
-	cv2.waitKey(0)
-	
 	print("Model Forwarding...")
 	imgL = left.transpose(2, 0, 1)
 	imgR = right.transpose(2, 0, 1)
@@ -48,62 +47,81 @@ def inference(left, right, model, n_iter=20):
 
 	return pred_disp
 
+
+
 if __name__ == '__main__':
 
 	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
-	left_img = cv2.imread("zed-output/left_0.png")	
-	right_img = cv2.imread("zed-output/right_0.png")
-	
+	comparison_folder ="comparison"
+	model_depth_maps = "model-depth-maps"
+	zed_files = "zed-output"
+	zed_depth_maps = "zed-depth-maps"
 
-	in_h, in_w = left_img.shape[:2]
+	for path in [comparison_folder, model_depth_maps]:
+		try:
+			shutil.rmtree(path)
+			print(f"Directory '{path}' has been removed successfully.")
+		except OSError as e:
+			print(f"Error: {e.strerror}")
 
-	# Resize image in case the GPU memory overflows
-	eval_h, eval_w = (in_h,in_w)
-	assert eval_h%8 == 0, "input height should be divisible by 8"
-	assert eval_w%8 == 0, "input width should be divisible by 8"
-	
-	imgL = cv2.resize(left_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
-	imgR = cv2.resize(right_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
-	
-	#imgL = cv2.resize(left_img, (800,800), interpolation=cv2.INTER_LINEAR)
-	#imgR = cv2.resize(right_img, (800,800), interpolation=cv2.INTER_LINEAR)
-	
+	os.makedirs( comparison_folder, exist_ok=True)
+	os.makedirs( model_depth_maps, exist_ok=True)
 
-	model_path = "models/crestereo_eth3d.pth"
+	files = sorted(os.listdir(zed_files))
 
-	model = Model(max_disp=256, mixed_precision=False, test_mode=True)
-	model.load_state_dict(torch.load(model_path), strict=True)
-	model.to(device)
-	model.eval()
+	left_images = [f for f in files if f.startswith("left")]
+	right_images = [f for f in files if f.startswith("right")]
 
-	print(f"imgL.shape: {imgL.shape}")
+	assert len(left_images) == len(right_images), "The number of left and right images should be equal"
 
-	pred = inference(imgL, imgR, model, n_iter=5)
+	for idx, (left_image, right_image) in enumerate(tqdm(zip(left_images, right_images)), start=0):
 
-	# cv2.imshow("pred", pred)
-	# cv2.waitKey()
+		print(f"Processing {idx}th frame!")
+		left_path = os.path.join(zed_files, left_image)
+		right_path = os.path.join(zed_files, right_image)
 
-	t = float(in_w) / float(eval_w)
-	print(f"t: {t}")
-	disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t
+		left_img = cv2.imread(left_path)	
+		right_img = cv2.imread(right_path)
+		
 
-	
-	disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
-	disp_vis = disp_vis.astype("uint8")
-	
-	#cv2.imshow("disp_vis", disp_vis)
-	#cv2.waitKey()
+		in_h, in_w = left_img.shape[:2]
 
-	disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
-	#cv2.imshow("disp_vis", disp_vis)
-	#cv2.waitKey()
+		# Resize image in case the GPU memory overflows
+		eval_h, eval_w = (in_h,in_w)
+		assert eval_h%8 == 0, "input height should be divisible by 8"
+		assert eval_w%8 == 0, "input width should be divisible by 8"
+		
+		imgL = cv2.resize(left_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
+		imgR = cv2.resize(right_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
+		
+		model_path = "models/crestereo_eth3d.pth"
 
-	combined_img = np.hstack((left_img, disp_vis))
-	cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-	cv2.imshow("output", combined_img)
-	#cv2.imwrite("output.jpg", disp_vis)
-	cv2.waitKey()
+		model = Model(max_disp=256, mixed_precision=False, test_mode=True)
+		model.load_state_dict(torch.load(model_path), strict=True)
+		model.to(device)
+		model.eval()
+
+		pred = inference(imgL, imgR, model, n_iter=5)
+		t = float(in_w) / float(eval_w)
+
+		disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
+		disp_vis = disp_vis.astype("uint8")	
+		disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
+		
+		zed_depth_map = cv2.imread(f"{zed_depth_maps}/frame_{idx}.png")
+		# cv2.imshow("zed_depth_map", zed_depth_map)
+		# cv2.waitKey()
+		# print(f"type()")
+		# print(f"zed_depth_map.shape: {zed_depth_map.shape} disp_vis.shape: {disp_vis.shape}")
+
+		combined_img = np.hstack((zed_depth_map, disp_vis))
+		#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+		#cv2.imshow("output", combined_img)
+		cv2.imwrite(f"{model_depth_maps}/frame_{idx}.png", disp_vis)
+		cv2.imwrite(f"{comparison_folder}/frame_{idx}.jpg", combined_img)
+		#cv2.waitKey()
 
 

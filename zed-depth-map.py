@@ -67,6 +67,7 @@ if __name__ == '__main__':
 		# SVO PROCESSING 
 		if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS :
 			
+			print(f"Processing {i}th frame!")
 			# retrieve stereo images
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
@@ -77,19 +78,16 @@ if __name__ == '__main__':
 			image_l.write( os.path.join(zed_output_dir, f'left_{i}.png') )
 			image_r.write( os.path.join(zed_output_dir, f'right_{i}.png') )
 			
-			i = i + 1
-			
 			depth_map_colorized = colorize_depth_map(depth_for_display.get_data()[: , : , :3])
 			cv2.imwrite( os.path.join(zed_depth_map_dir, f'frame_{i}.png'), depth_map_colorized)	
 
-
+			i = i + 1
 			#combined_img = np.hstack((pred, disp_vis))
-			cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-			cv2.imshow("output", depth_map_colorized)	
+			#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+			#cv2.imshow("output", depth_map_colorized)	
 			#cv2.imwrite("output/output.jpg", disp_vis)
-			cv2.waitKey()
+			#cv2.waitKey()
 
-			print(f"i: {i}")
 			if i > 5: 
 				break
 
