@@ -3,6 +3,8 @@ output/*
 zed-output/* 
 zed-depth-map/*
 svo-files/*
+*.jpg
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
