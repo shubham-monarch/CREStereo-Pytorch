@@ -10,12 +10,15 @@ from nets import Model
 import os
 import shutil
 from tqdm import tqdm
+import utils
 
 
 device = 'cuda'
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
 def inference(left, right, model, n_iter=20):
+
+	torch.cuda.empty_cache()
 
 	# print("Model Forwarding...")
 	imgL = left.transpose(2, 0, 1)
@@ -55,8 +58,8 @@ if __name__ == '__main__':
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
 	comparison_folder ="comparison"
-
-
+	disparity_comparison = "disparity_comparison"
+	
 	model_disparity_maps = "model_disparity_maps"
 	
 	zed_files = "zed_output"
@@ -136,11 +139,11 @@ if __name__ == '__main__':
 		focal_length = 1093.5
 		
 		# Depth Calculations
-		depth_ = (baseline * focal_length) / (disp + 1e-6)
-		depth = cv2.resize(depth_, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
-		depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
-		depth_vis_single_channel = depth_vis.astype("uint8")	
-		depth_vis_three_channel = cv2.applyColorMap(depth_vis_single_channel, cv2.COLORMAP_INFERNO)
+		# depth_ = (baseline * focal_length) / (disp + 1e-6)
+		# depth = cv2.resize(depth_, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		# depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+		# depth_vis_single_channel = depth_vis.astype("uint8")	
+		# depth_vis_three_channel = cv2.applyColorMap(depth_vis_single_channel, cv2.COLORMAP_INFERNO)
 
 		# disp - depth Calculations
 		# diff = disp - depth
@@ -163,15 +166,17 @@ if __name__ == '__main__':
 		# print(f"\ndisp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
 		# print(f"depth_vis_single_channel.shape: {depth_vis_single_channel.shape}")
 
+		depth_mono = utils.get_mono_depth(disp, baseline, focal_length, t)
 
+		print(f"depth_mono.shape: {depth_mono.shape} disp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
 
-		# disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_vis_single_channel])
-		disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_vis_three_channel])
+		disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_mono])
+		# disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_vis_three_channel])
 		cv2.namedWindow("Disparity vs Depth", cv2.WINDOW_NORMAL)
 		cv2.resizeWindow("Disparity vs Depth", 600, 600)
 		cv2.imshow("Disparity vs Depth", disp_depth_concat)
 
-		cv2.waitKey(0	)
+		cv2.waitKey(0)
 
 		# zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
