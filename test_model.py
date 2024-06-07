@@ -55,11 +55,14 @@ if __name__ == '__main__':
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
 	comparison_folder ="comparison"
-	model_depth_maps = "model-depth-maps"
-	zed_files = "zed-output"
-	zed_depth_maps = "zed-depth-maps"
+	# model_depth_maps = "model-depth-maps"
+	model_disparity_maps = "model_disparity_maps"
+	
+	zed_files = "zed_output"
+	# zed_depth_maps = "zed-depth-maps"
+	zed_disparity_maps = "zed_disparity_maps"
 
-	for path in [comparison_folder, model_depth_maps]:
+	for path in [comparison_folder, model_disparity_maps]:
 		try:
 			shutil.rmtree(path)
 			print(f"Directory '{path}' has been removed successfully.")
@@ -67,7 +70,7 @@ if __name__ == '__main__':
 			print(f"Error: {e.strerror}")
 
 	os.makedirs( comparison_folder, exist_ok=True)
-	os.makedirs( model_depth_maps, exist_ok=True)
+	os.makedirs( model_disparity_maps, exist_ok=True)
 
 	files = sorted(os.listdir(zed_files))
 
@@ -113,7 +116,7 @@ if __name__ == '__main__':
 		disp_vis = disp_vis.astype("uint8")	
 		disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
 		
-		zed_disp_map = cv2.imread(f"{zed_depth_maps}/frame_{idx}.png")
+		zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
 		# cv2.waitKey()
 		# print(f"type()")
@@ -122,7 +125,7 @@ if __name__ == '__main__':
 		combined_img = np.hstack((zed_disp_map, disp_vis))
 		#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
 		#cv2.imshow("output", combined_img)
-		cv2.imwrite(f"{model_depth_maps}/frame_{idx}.png", disp_vis)
+		cv2.imwrite(f"{model_disparity_maps}/frame_{idx}.png", disp_vis)
 		cv2.imwrite(f"{comparison_folder}/frame_{idx}.jpg", combined_img)
 		#cv2.waitKey()
 	progress_bar.close()

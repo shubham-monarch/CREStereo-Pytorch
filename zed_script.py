@@ -48,11 +48,13 @@ if __name__ == '__main__':
 	runtime_parameters = sl.RuntimeParameters()
 	runtime_parameters.enable_fill_mode	= True
 	
-	zed_output_dir = "zed-output"
-	zed_depth_map_dir = "zed-depth-maps"
+	# zed_output_dir = "zed-output"
+	zed_output_dir = "zed_output"
+	# zed_depth_map_dir = "zed-depth-maps"
+	zed_disparity_map = "zed_disparity_maps"
 	
 	# delete old directories
-	for path in [zed_output_dir, zed_depth_map_dir]:
+	for path in [zed_output_dir, zed_disparity_map]:
 		try:
 			shutil.rmtree(path)
 			print(f"Directory '{path}' has been removed successfully.")
@@ -61,7 +63,7 @@ if __name__ == '__main__':
 
 	
 	os.makedirs( zed_output_dir, exist_ok=True)
-	os.makedirs( zed_depth_map_dir, exist_ok=True)
+	os.makedirs( zed_disparity_map, exist_ok=True)
 
 	while True:
 
@@ -80,7 +82,7 @@ if __name__ == '__main__':
 			image_r.write( os.path.join(zed_output_dir, f'right_{i}.png') )
 			
 			depth_map_colorized = colorize_depth_map(depth_for_display.get_data()[: , : , :3])
-			cv2.imwrite( os.path.join(zed_depth_map_dir, f'frame_{i}.png'), depth_map_colorized)	
+			cv2.imwrite( os.path.join(zed_disparity_map, f'frame_{i}.png'), depth_map_colorized)	
 
 			i = i + 1
 			#combined_img = np.hstack((pred, disp_vis))
