@@ -50,31 +50,41 @@ def inference(left, right, model, n_iter=20):
 
 	return pred_disp
 
-
+# camera parameters
+BASELINE = 0.13
+FOCAL_LENGTH = 1093.5
+		
 
 if __name__ == '__main__':
 
 	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
-	comparison_folder ="comparison"
-	disparity_comparison = "disparity_comparison"
-	
+	# comparison folders
+	disparity_comparison_dir = "comparison/disparity"
+	depth_comparison_dir = "comparison/depth"
+
+	# model folders	
 	model_disparity_maps = "model_disparity_maps"
 	
+	# zed folders
 	zed_files = "zed_output"
 	zed_disparity_maps = "zed_disparity_maps"
 
-	for path in [comparison_folder, model_disparity_maps]:
+	for path in [disparity_comparison_dir, depth_comparison_dir]:
 		try:
 			shutil.rmtree(path)
-			print(f"Directory '{path}' has been removed successfully.")
+			print(f"Directory '{path}' has been removed successsfully.")
 		except OSError as e:
 			print(f"Error: {e.strerror}")
 
-	os.makedirs( comparison_folder, exist_ok=True)
-	os.makedirs( model_disparity_maps, exist_ok=True)
-
+	for path in [disparity_comparison_dir, depth_comparison_dir]:
+		try:
+			os.makedirs(path, exist_ok=True)
+		except OSError as e:
+			print(f"Error creating folder: {e}")
+	
+	
 	files = sorted(os.listdir(zed_files))
 
 	left_images = [f for f in files if f.startswith("left")]
@@ -118,38 +128,35 @@ if __name__ == '__main__':
 		t = float(in_w) / float(eval_w)
 
 		# Disparity Calculations
-		disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
-		disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
-		disp_vis_single_channel = disp_vis.astype("uint8")	
-		disp_vis_three_channel = cv2.applyColorMap(disp_vis_single_channel, cv2.COLORMAP_INFERNO)
+		model_disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		model_disp_vis = (model_disp - model_disp.min()) / (model_disp.max() - model_disp.min()) * 255.0
+		model_disp_mono = model_disp_vis.astype("uint8")	
+		model_disp_rgb = cv2.applyColorMap(model_disp_mono, cv2.COLORMAP_INFERNO)
 
-		
 		# cv2 window parameters
-		# cv2.namedWindow("Disparity => 1 Channel", cv2.WINDOW_NORMAL)
-		# cv2.resizeWindow("Disparity => 1 Channel", 600, 600)
-		# cv2.imshow("Disparity => 1 Channel", disp_vis_single_channel)
-		# cv2.waitKey(5000)
+		cv2.namedWindow("Disparity", cv2.WINDOW_NORMAL)
+		cv2.resizeWindow("Disparity", 600, 600)
+		cv2.imshow("Disparity", model_disp_rgb)
+		cv2.waitKey(5000)
 
 		# cv2.namedWindow("Disparity => 3 Channel", cv2.WINDOW_NORMAL)
 		# cv2.resizeWindow("Disparity => 3 Channel", 600, 600)
 		# cv2.imshow("Disparity => 3 Channel", disp_vis_three_channel)
 		# cv2.waitKey(5000)
 
-		baseline = 0.13
-		focal_length = 1093.5
 		
-		depth_mono = utils.get_mono_depth(disp, baseline, focal_length, t)
-		depth_rgb = utils.get_rgb_depth(disp, baseline, focal_length, t)	
+		# depth_mono = utils.get_mono_depth(disp, baseline, focal_length, t)
+		# depth_rgb = utils.get_rgb_depth(disp, baseline, focal_length, t)	
 
-		print(f"depth_mono.shape: {depth_mono.shape} disp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
+		# print(f"depth_mono.shape: {depth_mono.shape} disp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
 
-		# disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_mono])
-		disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_rgb])
-		cv2.namedWindow("Disparity vs Depth", cv2.WINDOW_NORMAL)
-		cv2.resizeWindow("Disparity vs Depth", 600, 600)
-		cv2.imshow("Disparity vs Depth", disp_depth_concat)
+		# # disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_mono])
+		# disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_rgb])
+		# cv2.namedWindow("Disparity vs Depth", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disparity vs Depth", 600, 600)
+		# cv2.imshow("Disparity vs Depth", disp_depth_concat)
 
-		cv2.waitKey(0)
+		# cv2.waitKey(0)
 
 		# zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
