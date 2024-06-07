@@ -114,26 +114,66 @@ if __name__ == '__main__':
 		pred = inference(imgL, imgR, model, n_iter=5)
 		t = float(in_w) / float(eval_w)
 
+		# Disparity Calculations
 		disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
 		disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
 		disp_vis_single_channel = disp_vis.astype("uint8")	
 		disp_vis_three_channel = cv2.applyColorMap(disp_vis_single_channel, cv2.COLORMAP_INFERNO)
 
-		# print(f"disp.shape: {disp.shape} disp_vis.shape: {disp_vis.shape}")
-
+		
 		# cv2 window parameters
-		cv2.namedWindow("Disparity => 1 Channel", cv2.WINDOW_NORMAL)
-		cv2.resizeWindow("Disparity => 1 Channel", 600, 600)
-		cv2.imshow("Disparity => 1 Channel", disp_vis_single_channel)
-		cv2.waitKey(5000)
+		# cv2.namedWindow("Disparity => 1 Channel", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disparity => 1 Channel", 600, 600)
+		# cv2.imshow("Disparity => 1 Channel", disp_vis_single_channel)
+		# cv2.waitKey(5000)
 
-		cv2.namedWindow("Disparity => 3 Channel", cv2.WINDOW_NORMAL)
-		cv2.resizeWindow("Disparity => 3 Channel", 600, 600)
-		cv2.imshow("Disparity => 3 Channel", disp_vis_three_channel)
-		cv2.waitKey(5000)
+		# cv2.namedWindow("Disparity => 3 Channel", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disparity => 3 Channel", 600, 600)
+		# cv2.imshow("Disparity => 3 Channel", disp_vis_three_channel)
+		# cv2.waitKey(5000)
+
+		baseline = 0.13
+		focal_length = 1093.5
+		
+		# Depth Calculations
+		depth_ = (baseline * focal_length) / (disp + 1e-6)
+		depth = cv2.resize(depth_, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+		depth_vis_single_channel = depth_vis.astype("uint8")	
+		depth_vis_three_channel = cv2.applyColorMap(depth_vis_single_channel, cv2.COLORMAP_INFERNO)
+
+		# disp - depth Calculations
+		# diff = disp - depth
+		# diff_vis = (diff - diff.min()) / (diff.max() - diff.min()) * 255.0
+		# diff_vis_single_channel = diff_vis.astype("uint8")	
+		
+		# # cv2 window parameters
+		# cv2.namedWindow("Disp - Depth", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disp - Depth", 600, 600)
+		# cv2.imshow("Disp - Depth", diff_vis_single_channel)
+		# cv2.waitKey(0)
 
 		
-		zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
+		# cv2 window parameters
+		# cv2.namedWindow("Depth => 1 Channel", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Depth => 1 Channel", 600, 600)
+		# cv2.imshow("Depth => 1 Channel", depth_vis_single_channel)
+		# cv2.waitKey(5000)
+
+		# print(f"\ndisp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
+		# print(f"depth_vis_single_channel.shape: {depth_vis_single_channel.shape}")
+
+
+
+		# disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_vis_single_channel])
+		disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_vis_three_channel])
+		cv2.namedWindow("Disparity vs Depth", cv2.WINDOW_NORMAL)
+		cv2.resizeWindow("Disparity vs Depth", 600, 600)
+		cv2.imshow("Disparity vs Depth", disp_depth_concat)
+
+		cv2.waitKey(0	)
+
+		# zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
 		# cv2.waitKey(0)
 		# print(f"type()")
