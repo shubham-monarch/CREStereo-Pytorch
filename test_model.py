@@ -12,6 +12,7 @@ import shutil
 from tqdm import tqdm
 import utils
 import coloredlogs, logging
+import sys
 
 device = 'cuda'
 
@@ -126,16 +127,9 @@ def cre_pipeline():
 		model.to(device)
 		model.eval()
 
-		logging.info(f"Before Inference!")
-		logging.warn("Before Inference!")
-		logging.debug("Before Inference!")
-		# print(f"=========================== BEFORE INFERENCE ===========================")
 		pred = inference(imgL, imgR, model, n_iter=5)
 		t = float(in_w) / float(eval_w)
-		# print(f"=========================== AFTER INFERENCE =============================")
-		logging.info(f"After Inference!")
-		logging.debug("After Inference!")
-
+		
 		# Model Disparity Calculations
 		model_disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
 		model_disp_vis = (model_disp - model_disp.min()) / (model_disp.max() - model_disp.min()) * 255.0
@@ -230,8 +224,9 @@ if __name__ == '__main__':
 	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
-	coloredlogs.install()  # install a handler on the root logger
-	# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	
+	
 	cre_pipeline()
 
 
