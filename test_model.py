@@ -17,7 +17,7 @@ device = 'cuda'
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
 def inference(left, right, model, n_iter=20):
 
-	print("Model Forwarding...")
+	# print("Model Forwarding...")
 	imgL = left.transpose(2, 0, 1)
 	imgR = right.transpose(2, 0, 1)
 	imgL = np.ascontiguousarray(imgL[None, :, :, :])
@@ -75,10 +75,12 @@ if __name__ == '__main__':
 	right_images = [f for f in files if f.startswith("right")]
 
 	assert len(left_images) == len(right_images), "The number of left and right images should be equal"
-
+	
+	progress_bar = tqdm(total=len(left_images))
 	for idx, (left_image, right_image) in enumerate(tqdm(zip(left_images, right_images)), start=0):
+		progress_bar.update(1)
 
-		print(f"Processing {idx}th frame!")
+		# print(f"Processing {idx}th frame!")
 		left_path = os.path.join(zed_files, left_image)
 		right_path = os.path.join(zed_files, right_image)
 
@@ -111,17 +113,19 @@ if __name__ == '__main__':
 		disp_vis = disp_vis.astype("uint8")	
 		disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
 		
-		zed_depth_map = cv2.imread(f"{zed_depth_maps}/frame_{idx}.png")
+		zed_disp_map = cv2.imread(f"{zed_depth_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
 		# cv2.waitKey()
 		# print(f"type()")
 		# print(f"zed_depth_map.shape: {zed_depth_map.shape} disp_vis.shape: {disp_vis.shape}")
 
-		combined_img = np.hstack((zed_depth_map, disp_vis))
+		combined_img = np.hstack((zed_disp_map, disp_vis))
 		#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
 		#cv2.imshow("output", combined_img)
 		cv2.imwrite(f"{model_depth_maps}/frame_{idx}.png", disp_vis)
 		cv2.imwrite(f"{comparison_folder}/frame_{idx}.jpg", combined_img)
 		#cv2.waitKey()
+	progress_bar.close()
+
 
 

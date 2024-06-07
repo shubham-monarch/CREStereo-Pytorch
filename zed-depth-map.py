@@ -24,7 +24,8 @@ def colorize_depth_map(pred):
 if __name__ == '__main__':
 
 
-	svo_file = "svo-files/front_2023-11-03-10-46-17.svo"
+	#svo_file = "svo-files/front_2023-11-03-10-46-17.svo"
+	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
 	i = 0 
 
 
