@@ -138,40 +138,13 @@ if __name__ == '__main__':
 		baseline = 0.13
 		focal_length = 1093.5
 		
-		# Depth Calculations
-		# depth_ = (baseline * focal_length) / (disp + 1e-6)
-		# depth = cv2.resize(depth_, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
-		# depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
-		# depth_vis_single_channel = depth_vis.astype("uint8")	
-		# depth_vis_three_channel = cv2.applyColorMap(depth_vis_single_channel, cv2.COLORMAP_INFERNO)
-
-		# disp - depth Calculations
-		# diff = disp - depth
-		# diff_vis = (diff - diff.min()) / (diff.max() - diff.min()) * 255.0
-		# diff_vis_single_channel = diff_vis.astype("uint8")	
-		
-		# # cv2 window parameters
-		# cv2.namedWindow("Disp - Depth", cv2.WINDOW_NORMAL)
-		# cv2.resizeWindow("Disp - Depth", 600, 600)
-		# cv2.imshow("Disp - Depth", diff_vis_single_channel)
-		# cv2.waitKey(0)
-
-		
-		# cv2 window parameters
-		# cv2.namedWindow("Depth => 1 Channel", cv2.WINDOW_NORMAL)
-		# cv2.resizeWindow("Depth => 1 Channel", 600, 600)
-		# cv2.imshow("Depth => 1 Channel", depth_vis_single_channel)
-		# cv2.waitKey(5000)
-
-		# print(f"\ndisp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
-		# print(f"depth_vis_single_channel.shape: {depth_vis_single_channel.shape}")
-
 		depth_mono = utils.get_mono_depth(disp, baseline, focal_length, t)
+		depth_rgb = utils.get_rgb_depth(disp, baseline, focal_length, t)	
 
 		print(f"depth_mono.shape: {depth_mono.shape} disp_vis_single_channel.shape: {disp_vis_single_channel.shape}")
 
-		disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_mono])
-		# disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_vis_three_channel])
+		# disp_depth_concat = cv2.hconcat([disp_vis_single_channel, depth_mono])
+		disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_rgb])
 		cv2.namedWindow("Disparity vs Depth", cv2.WINDOW_NORMAL)
 		cv2.resizeWindow("Disparity vs Depth", 600, 600)
 		cv2.imshow("Disparity vs Depth", disp_depth_concat)
