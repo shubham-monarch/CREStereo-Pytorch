@@ -55,11 +55,11 @@ if __name__ == '__main__':
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
 	comparison_folder ="comparison"
-	# model_depth_maps = "model-depth-maps"
+
+
 	model_disparity_maps = "model_disparity_maps"
 	
 	zed_files = "zed_output"
-	# zed_depth_maps = "zed-depth-maps"
 	zed_disparity_maps = "zed_disparity_maps"
 
 	for path in [comparison_folder, model_disparity_maps]:
@@ -81,6 +81,9 @@ if __name__ == '__main__':
 	
 	progress_bar = tqdm(total=len(left_images))
 	for idx, (left_image, right_image) in enumerate(tqdm(zip(left_images, right_images)), start=0):
+		if idx  > 0 :
+			break
+		
 		progress_bar.update(1)
 
 		# print(f"Processing {idx}th frame!")
@@ -113,21 +116,38 @@ if __name__ == '__main__':
 
 		disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
 		disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
-		disp_vis = disp_vis.astype("uint8")	
-		disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
+		disp_vis_single_channel = disp_vis.astype("uint8")	
+		disp_vis_three_channel = cv2.applyColorMap(disp_vis_single_channel, cv2.COLORMAP_INFERNO)
+
+		# print(f"disp.shape: {disp.shape} disp_vis.shape: {disp_vis.shape}")
+
+		# cv2 window parameters
+		cv2.namedWindow("Disparity => 1 Channel", cv2.WINDOW_NORMAL)
+		cv2.resizeWindow("Disparity => 1 Channel", 600, 600)
+		cv2.imshow("Disparity => 1 Channel", disp_vis_single_channel)
+		cv2.waitKey(5000)
+
+		cv2.namedWindow("Disparity => 3 Channel", cv2.WINDOW_NORMAL)
+		cv2.resizeWindow("Disparity => 3 Channel", 600, 600)
+		cv2.imshow("Disparity => 3 Channel", disp_vis_three_channel)
+		cv2.waitKey(5000)
+
 		
 		zed_disp_map = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# cv2.imshow("zed_depth_map", zed_depth_map)
-		# cv2.waitKey()
+		# cv2.waitKey(0)
 		# print(f"type()")
 		# print(f"zed_depth_map.shape: {zed_depth_map.shape} disp_vis.shape: {disp_vis.shape}")
 
-		combined_img = np.hstack((zed_disp_map, disp_vis))
-		#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-		#cv2.imshow("output", combined_img)
-		cv2.imwrite(f"{model_disparity_maps}/frame_{idx}.png", disp_vis)
-		cv2.imwrite(f"{comparison_folder}/frame_{idx}.jpg", combined_img)
-		#cv2.waitKey()
+		# combined_img = np.hstack((zed_disp_map, disp_vis))
+		# #cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+		# #cv2.imshow("output", combined_img)
+		# cv2.imwrite(f"{model_disparity_maps}/frame_{idx}.png", disp_vis)
+		# cv2.imwrite(f"{comparison_folder}/frame_{idx}.jpg", combined_img)
+		# #cv2.waitKey()
+		
+		cv2.destroyAllWindows()
+
 	progress_bar.close()
 
 
