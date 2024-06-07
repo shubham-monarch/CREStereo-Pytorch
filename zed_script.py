@@ -49,7 +49,7 @@ if __name__ == '__main__':
 	runtime_parameters.enable_fill_mode	= True
 	
 	# zed_output_dir = "zed-output"
-	zed_output_dir = "zed_output"
+	zed_output_dir = "zed_input"
 	# zed_depth_map_dir = "zed-depth-maps"
 	zed_disparity_map = "zed_disparity_maps"
 	
