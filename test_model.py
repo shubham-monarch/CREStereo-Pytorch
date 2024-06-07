@@ -36,6 +36,13 @@ zed_disp_maps = "zed_disparity_maps"
 zed_depth_maps = "zed_depth_maps"
 
 
+# zed output folders	
+zed_output_dir = "zed_output"
+zed_disp_maps = f"{zed_output_dir}/disparity_maps"
+zed_depth_maps = f"{zed_output_dir}/depth_maps"
+zed_disp_vs_depth_maps = f"{zed_output_dir}/disp_vs_depth"	
+
+
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
 def inference(left, right, model, n_iter=20):
 

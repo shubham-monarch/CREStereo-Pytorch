@@ -11,18 +11,10 @@ import coloredlogs, logging
 
 # zed input folders => input to the model pipeline
 zed_input_dir = "zed_input"
-zed_input_disp_map = f"{zed_input_dir}/disparity_maps"
-zed_input_depth_map = f"{zed_input_dir}/depth_maps"	
+zed_input_disp_maps = f"{zed_input_dir}/disparity_maps"
 zed_input_images= f"{zed_input_dir}/images"
 
-# zed output folders	
-zed_output_dir = "zed_output"
-zed_disp_maps = f"{zed_output_dir}/disparity_maps"
-zed_depth_maps = f"{zed_output_dir}/depth_maps"
-zed_disp_vs_depth_maps = f"{zed_output_dir}/disp_vs_depth"	
-
-
-def colorize_depth_map(pred):
+def to_depth_map(pred):
 	
 	in_h, in_w = pred.shape[:2]
 	eval_h, eval_w = (in_h,in_w)
@@ -32,20 +24,21 @@ def colorize_depth_map(pred):
 	
 	disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
 	disp_vis = disp_vis.astype("uint8")
-	disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
+	# disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
 	return disp_vis
+
 
 def run_zed_pipeline(svo_file, num_frames=5): 
 	
 	# deleting the old files
-	for folder_path in [zed_input_dir, zed_output_dir]:
+	for folder_path in [zed_input_dir]:
 		if os.path.exists(folder_path):
 			shutil.rmtree(folder_path)
 		else:
 			print(f"The folder {folder_path} does not exist.")
 	
 	# creating the new folders
-	for path in [zed_input_disp_map, zed_input_depth_map, zed_input_images]:
+	for path in [zed_input_disp_maps, zed_input_images]:
 		os.makedirs(path, exist_ok=True)
 
 	input_type = sl.InputType()
@@ -66,13 +59,9 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	runtime_parameters.enable_fill_mode	= True
 	
 	i = 0
-	while zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS :
+	while zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS and i < num_frames:
 
-			if i > num_frames - 1: 
-				break
-			
-			logging.info(f"Processing {i}th frame!")
-			
+			logging.info(f"Processing {i}th frame!")			
 			# retrieve and write stereo images
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
@@ -81,28 +70,13 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			
 			# retrieve and write disparity map
 			zed.retrieve_image(disp_map, sl.VIEW.DEPTH)
-			logging.info(f"disp_map.shape: {disp_map.get_data().shape}")
-			cv2.imwrite( os.path.join(zed_input_disp_map, f'frame_{i}.png'), disp_map.get_data()[: , : , 3])	
+			depth_map_colorized =to_depth_map(disp_map.get_data()[: , : , :3])
+			cv2.imwrite( os.path.join(zed_input_disp_maps, f'frame_{i}.png'), to_depth_map(disp_map.get_data()[: , : , :3]))
 
-
-
-			i = i + 1
-			#combined_img = np.hstack((pred, disp_vis))
-			#cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-			#cv2.imshow("output", depth_map_colorized)	
-			#cv2.imwrite("output/output.jpg", disp_vis)
-			#cv2.waitKey()
-
-			
-		
-
+			i += 1
 
 if __name__ == '__main__':
-
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
 	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
 	run_zed_pipeline(svo_file)
-
-	#svo_file = "svo-files/front_2023-11-03-10-46-17.svo"
-	

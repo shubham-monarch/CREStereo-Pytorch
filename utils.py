@@ -6,6 +6,7 @@ import numpy as np
 # TO-DO:
 # - tune zed pointcloud generation
 # - config files for directories -> zed_input, zed_output,  model_output
+# - change zed frame indexing in zed_script.py
 
 def get_mono_depth(disp, baseline, focal_length, gpu_t):
     """
