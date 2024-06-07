@@ -16,6 +16,26 @@ import sys
 
 device = 'cuda'
 
+# camera parameters
+BASELINE = 0.13
+FOCAL_LENGTH = 1093.5
+
+# comparison folders
+disp_comparison_dir = "comparison/disparity"
+depth_comparison_dir = "comparison/depth"
+
+# model output folders	
+model_directory = "model_output"
+model_disp_maps = f"{model_directory}/disparity_maps"
+model_depth_maps = f"{model_directory}/depth_maps"
+model_disp_vs_depth_maps = f"{model_directory}/disp_vs_depth"	
+
+# zed input folders
+zed_images = "zed_output"
+zed_disp_maps = "zed_disparity_maps"
+zed_depth_maps = "zed_depth_maps"
+
+
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
 def inference(left, right, model, n_iter=20):
 
@@ -53,28 +73,7 @@ def inference(left, right, model, n_iter=20):
 
 	return pred_disp
 
-# camera parameters
-BASELINE = 0.13
-FOCAL_LENGTH = 1093.5
-
-
-
-def cre_pipeline():
-	# comparison folders
-	disp_comparison_dir = "comparison/disparity"
-	depth_comparison_dir = "comparison/depth"
-
-	# model output folders	
-	model_directory = "model_output"
-	model_disp_maps = f"{model_directory}/disparity_maps"
-	model_depth_maps = f"{model_directory}/depth_maps"
-	model_disp_vs_depth_maps = f"{model_directory}/disp_vs_depth"	
-	
-	# zed output folders
-	zed_images = "zed_output"
-	zed_disp_maps = "zed_disparity_maps"
-	zed_depth_maps = "zed_depth_maps"
-
+def run_model_pipeline():
 	for path in [disp_comparison_dir, depth_comparison_dir, \
 					model_disp_maps, model_depth_maps, model_disp_vs_depth_maps, \
 					zed_disp_maps, zed_depth_maps]:

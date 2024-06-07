@@ -6,6 +6,21 @@ import numpy as np
 import cv2
 import os
 import shutil
+import coloredlogs, logging
+
+
+# zed input folders => input to the model pipeline
+zed_input_dir = "zed_input"
+zed_input_disp_map = f"{zed_input_dir}/disparity_maps"
+zed_input_depth_map = f"{zed_input_dir}/depth_maps"	
+zed_input_images= f"{zed_input_dir}/images"
+
+# zed output folders	
+zed_output_dir = "zed_output"
+zed_disp_maps = f"{zed_output_dir}/disparity_maps"
+zed_depth_maps = f"{zed_output_dir}/depth_maps"
+zed_disp_vs_depth_maps = f"{zed_output_dir}/disp_vs_depth"	
+
 
 def colorize_depth_map(pred):
 	
@@ -20,20 +35,24 @@ def colorize_depth_map(pred):
 	disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_INFERNO)
 	return disp_vis
 
-
-if __name__ == '__main__':
-
-
-	#svo_file = "svo-files/front_2023-11-03-10-46-17.svo"
-	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
-	i = 0 
-
+def run_zed_pipeline(svo_file, num_frames=5): 
+	
+	# deleting the old files
+	for folder_path in [zed_input_dir, zed_output_dir]:
+		if os.path.exists(folder_path):
+			shutil.rmtree(folder_path)
+		else:
+			print(f"The folder {folder_path} does not exist.")
+	
+	# creating the new folders
+	for path in [zed_input_disp_map, zed_input_depth_map, zed_input_images]:
+		os.makedirs(path, exist_ok=True)
 
 	input_type = sl.InputType()
 	input_type.set_from_svo_file(svo_file)
 	
 	init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
-	init_params.depth_mode = sl.DEPTH_MODE.PERFORMANCE # Use ULTRA depth mode
+	init_params.depth_mode = sl.DEPTH_MODE.ULTRA # Use ULTRA depth mode
 	init_params.coordinate_units = sl.UNIT.METER # Use millimeter units (for depth measurements)
 
 	zed = sl.Camera()
@@ -41,48 +60,31 @@ if __name__ == '__main__':
 	
 	image_l = sl.Mat()
 	image_r = sl.Mat()
-	
-	depth_map = sl.Mat()
-	depth_for_display = sl.Mat()
+	disp_map = sl.Mat()
 			
 	runtime_parameters = sl.RuntimeParameters()
 	runtime_parameters.enable_fill_mode	= True
 	
-	# zed_output_dir = "zed-output"
-	zed_output_dir = "zed_input"
-	# zed_depth_map_dir = "zed-depth-maps"
-	zed_disparity_map = "zed_disparity_maps"
-	
-	# delete old directories
-	for path in [zed_output_dir, zed_disparity_map]:
-		try:
-			shutil.rmtree(path)
-			print(f"Directory '{path}' has been removed successfully.")
-		except OSError as e:
-			print(f"Error: {e.strerror}")
+	i = 0
+	while zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS :
 
-	
-	os.makedirs( zed_output_dir, exist_ok=True)
-	os.makedirs( zed_disparity_map, exist_ok=True)
-
-	while True:
-
-		# SVO PROCESSING 
-		if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS :
+			if i > num_frames - 1: 
+				break
 			
-			print(f"Processing {i}th frame!")
-			# retrieve stereo images
+			logging.info(f"Processing {i}th frame!")
+			
+			# retrieve and write stereo images
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
+			image_l.write( os.path.join(zed_input_images, f'left_{i}.png') )
+			image_r.write( os.path.join(zed_input_images, f'right_{i}.png') )
 			
-			# retrieve depth map image
-			zed.retrieve_image(depth_for_display, sl.VIEW.DEPTH)
+			# retrieve and write disparity map
+			zed.retrieve_image(disp_map, sl.VIEW.DEPTH)
+			logging.info(f"disp_map.shape: {disp_map.get_data().shape}")
+			cv2.imwrite( os.path.join(zed_input_disp_map, f'frame_{i}.png'), disp_map.get_data()[: , : , 3])	
 
-			image_l.write( os.path.join(zed_output_dir, f'left_{i}.png') )
-			image_r.write( os.path.join(zed_output_dir, f'right_{i}.png') )
-			
-			depth_map_colorized = colorize_depth_map(depth_for_display.get_data()[: , : , :3])
-			cv2.imwrite( os.path.join(zed_disparity_map, f'frame_{i}.png'), depth_map_colorized)	
+
 
 			i = i + 1
 			#combined_img = np.hstack((pred, disp_vis))
@@ -91,9 +93,16 @@ if __name__ == '__main__':
 			#cv2.imwrite("output/output.jpg", disp_vis)
 			#cv2.waitKey()
 
-			if i > 5: 
-				break
+			
+		
 
-		else:
-			break
 
+if __name__ == '__main__':
+
+
+	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
+	run_zed_pipeline(svo_file)
+
+	#svo_file = "svo-files/front_2023-11-03-10-46-17.svo"
+	

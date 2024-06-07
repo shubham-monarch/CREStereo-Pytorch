@@ -3,9 +3,9 @@
 import cv2
 import numpy as np
 
-
-import numpy as np
-import cv2
+# TO-DO:
+# - tune zed pointcloud generation
+# - config files for directories -> zed_input, zed_output,  model_output
 
 def get_mono_depth(disp, baseline, focal_length, gpu_t):
     """
