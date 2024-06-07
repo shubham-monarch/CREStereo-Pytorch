@@ -2,7 +2,9 @@
 
 import cv2
 
+# TODO: add assert for disp.shape
 def get_mono_depth(disp, baseline, focal_length, gpu_t):
+    assert(disp.ndim == 2)
     depth_ = (baseline * focal_length) / (disp + 1e-6)
     depth = cv2.resize(depth_, disp.shape[::-1], interpolation=cv2.INTER_LINEAR) * gpu_t	
     depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0

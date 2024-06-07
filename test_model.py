@@ -11,6 +11,7 @@ import os
 import shutil
 from tqdm import tqdm
 import utils
+import logging
 
 
 device = 'cuda'
@@ -28,6 +29,8 @@ def inference(left, right, model, n_iter=20):
 
 	imgL = torch.tensor(imgL.astype("float32")).to(device)
 	imgR = torch.tensor(imgR.astype("float32")).to(device)
+
+
 
 	imgL_dw2 = F.interpolate(
 		imgL,
@@ -53,13 +56,10 @@ def inference(left, right, model, n_iter=20):
 # camera parameters
 BASELINE = 0.13
 FOCAL_LENGTH = 1093.5
-		
 
-if __name__ == '__main__':
 
-	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
-	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
+def cre_pipeline():
 	# comparison folders
 	disparity_comparison_dir = "comparison/disparity"
 	depth_comparison_dir = "comparison/depth"
@@ -68,8 +68,9 @@ if __name__ == '__main__':
 	model_disparity_maps = "model_disparity_maps"
 	
 	# zed folders
-	zed_files = "zed_output"
+	zed_images = "zed_output"
 	zed_disparity_maps = "zed_disparity_maps"
+	zed_depth_maps = "zed_depth_maps"
 
 	for path in [disparity_comparison_dir, depth_comparison_dir]:
 		try:
@@ -85,7 +86,7 @@ if __name__ == '__main__':
 			print(f"Error creating folder: {e}")
 	
 	
-	files = sorted(os.listdir(zed_files))
+	files = sorted(os.listdir(zed_images))
 
 	left_images = [f for f in files if f.startswith("left")]
 	right_images = [f for f in files if f.startswith("right")]
@@ -100,8 +101,8 @@ if __name__ == '__main__':
 		progress_bar.update(1)
 
 		# print(f"Processing {idx}th frame!")
-		left_path = os.path.join(zed_files, left_image)
-		right_path = os.path.join(zed_files, right_image)
+		left_path = os.path.join(zed_images, left_image)
+		right_path = os.path.join(zed_images, right_image)
 
 		left_img = cv2.imread(left_path)	
 		right_img = cv2.imread(right_path)
@@ -109,8 +110,10 @@ if __name__ == '__main__':
 
 		in_h, in_w = left_img.shape[:2]
 
+		print(f"(in_h, in_w): {(in_h, in_w)}")
 		# Resize image in case the GPU memory overflows
-		eval_h, eval_w = (in_h,in_w)
+		# eval_h, eval_w = (in_h,in_w)
+		eval_h, eval_w = (520,928)
 		assert eval_h%8 == 0, "input height should be divisible by 8"
 		assert eval_w%8 == 0, "input width should be divisible by 8"
 		
@@ -124,20 +127,62 @@ if __name__ == '__main__':
 		model.to(device)
 		model.eval()
 
+		print(f"=========================== BEFORE INFERENCE ===========================")
 		pred = inference(imgL, imgR, model, n_iter=5)
 		t = float(in_w) / float(eval_w)
+		print(f"=========================== AFTER INFERENCE =============================")
 
-		# Disparity Calculations
+		# Model Disparity Calculations
 		model_disp = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
 		model_disp_vis = (model_disp - model_disp.min()) / (model_disp.max() - model_disp.min()) * 255.0
 		model_disp_mono = model_disp_vis.astype("uint8")	
 		model_disp_rgb = cv2.applyColorMap(model_disp_mono, cv2.COLORMAP_INFERNO)
 
+		# Model Depth Calculations
+		model_depth_mono = utils.get_mono_depth(model_disp, BASELINE, FOCAL_LENGTH, t)
+		model_depth_rgb = utils.get_rgb_depth(model_disp, BASELINE, FOCAL_LENGTH, t)
+
+		# # cv2 window parameters
+		# cv2.namedWindow("Disparity", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disparity", 600, 600)
+		# cv2.imshow("Disparity", model_disp_rgb)
+		# cv2.waitKey(5000)
+
+		# ZED Disparity Calculations
+		zed_disp = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
+		zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
+		zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
+		zed_disp_mono = zed_disp_vis.astype("uint8")	
+		zed_disp_rgb = cv2.applyColorMap(zed_disp_mono, cv2.COLORMAP_INFERNO)
+
+		# ZED Depth Calculations
+		print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
+		zed_depth_mono = utils.get_mono_depth(zed_disp[:, : , 0], BASELINE, FOCAL_LENGTH, t)
+		zed_depth_rgb = utils.get_rgb_depth(zed_disp[:, :, 0], BASELINE, FOCAL_LENGTH, t)
+
 		# cv2 window parameters
-		cv2.namedWindow("Disparity", cv2.WINDOW_NORMAL)
-		cv2.resizeWindow("Disparity", 600, 600)
-		cv2.imshow("Disparity", model_disp_rgb)
-		cv2.waitKey(5000)
+		# cv2.namedWindow("Disparity", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("Disparity", 600, 600)
+		# cv2.imshow("Disparity", zed_disp_rgb)
+		# cv2.waitKey(5000)	
+
+		# # [DISPARITY] ZED vs Model 
+		# disp_comp = cv2.hconcat([zed_disp_rgb, model_disp_rgb])
+		# # disp_depth_concat = cv2.hconcat([disp_vis_three_channel, depth_rgb])
+		# cv2.namedWindow("[Disparity] ZED vs Model", cv2.WINDOW_NORMAL)
+		# cv2.resizeWindow("[Disparity] ZED vs Model", 600, 600)
+		# cv2.imshow("[Disparity] ZED vs Model", disp_comp)	
+		# cv2.waitKey(5000)
+
+		# [DEPTH] ZED vs Model
+		# depth_comp = cv2.hconcat([zed_depth_rgb, model_depth_rgb])
+		depth_comp = cv2.hconcat([zed_depth_mono, model_depth_mono])
+		cv2.namedWindow("[Depth] ZED vs Model", cv2.WINDOW_NORMAL)
+		cv2.resizeWindow("[Depth] ZED vs Model", 600, 600)
+		cv2.imshow("[Depth] ZED vs Model", depth_comp)
+		cv2.waitKey(0)
+
 
 		# cv2.namedWindow("Disparity => 3 Channel", cv2.WINDOW_NORMAL)
 		# cv2.resizeWindow("Disparity => 3 Channel", 600, 600)
@@ -174,6 +219,15 @@ if __name__ == '__main__':
 		cv2.destroyAllWindows()
 
 	progress_bar.close()
+
+
+if __name__ == '__main__':
+
+	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
+	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
+
+	logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+	cre_pipeline()
 
 
 
