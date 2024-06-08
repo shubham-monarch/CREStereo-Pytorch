@@ -31,9 +31,11 @@ model_depth_maps = f"{model_directory}/depth_maps"
 model_disp_vs_depth_maps = f"{model_directory}/disp_vs_depth"	
 
 # zed input folders
-zed_images = "zed_output"
-zed_disp_maps = "zed_disparity_maps"
-zed_depth_maps = "zed_depth_maps"
+zed_input_dir = "zed_input"
+zed_input_disp_maps = f"{zed_input_dir}/disparity_maps"
+zed_input_depth_maps = f"{zed_input_dir}/depth_maps"
+zed_input_images= f"{zed_input_dir}/images"
+
 
 
 # zed output folders	
@@ -99,7 +101,7 @@ def run_model_pipeline():
 			logging.error(f"Error creating folder: {e}")
 	
 	
-	files = sorted(os.listdir(zed_images))
+	files = sorted(os.listdir(zed_input_images))
 
 	left_images = [f for f in files if f.startswith("left")]
 	right_images = [f for f in files if f.startswith("right")]
@@ -115,8 +117,8 @@ def run_model_pipeline():
 		progress_bar.update(1)
 
 		# print(f"Processing {idx}th frame!")
-		left_path = os.path.join(zed_images, left_image)
-		right_path = os.path.join(zed_images, right_image)
+		left_path = os.path.join(zed_input_images, left_image)
+		right_path = os.path.join(zed_input_images, right_image)
 
 		left_img = cv2.imread(left_path)	
 		right_img = cv2.imread(right_path)
@@ -174,6 +176,17 @@ def run_model_pipeline():
 		# cv2.imshow("Disparity", model_disp_rgb)
 		# cv2.waitKey(5000)
 
+
+		# [ZED] Depth Calculations
+		# zed_depth_mono = utils.get_mono_depth(zed_disp[:, : , 0], BASELINE, FOCAL_LENGTH, t)
+		# zed_depth_rgb = utils.get_rgb_depth(zed_disp[:, :, 0], BASELINE, FOCAL_LENGTH, t)
+		# zed_depth_mono = utils.get_mono_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
+		# zed_depth_rgb = utils.get_rgb_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
+		# zed_depth_mono_vs_rgb = cv2.hconcat([zed_depth_mono, zed_depth_rgb])
+
+		# # [ZED] saving grayscale + colored depth map
+		# cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_depth_mono_vs_rgb)
+
 		# # [ZED] Disparity Calculations
 		# zed_disp = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
@@ -189,16 +202,7 @@ def run_model_pipeline():
 		# # [ZED] saving grayscale + colored disparity map
 		# cv2.imwrite(f"{zed_disparity_maps}/frame_{idx}.png", zed_disp_rgb)
 
-		# # [ZED] Depth Calculations
-		# # zed_depth_mono = utils.get_mono_depth(zed_disp[:, : , 0], BASELINE, FOCAL_LENGTH, t)
-		# # zed_depth_rgb = utils.get_rgb_depth(zed_disp[:, :, 0], BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_mono = utils.get_mono_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_rgb = utils.get_rgb_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_mono_vs_rgb = cv2.hconcat([zed_depth_mono, zed_depth_rgb])
-
-		# # [ZED] saving grayscale + colored depth map
-		# cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_depth_mono_vs_rgb)
-
+		
 		
 		# # saving [ZED] vs [MODEL] Disparity	
 		# # logging.debug(f"zed_disp_mono.shape: {zed_disp_mono.shape} model_disp_mono.shape: {model_disp_mono.shape}")
@@ -281,9 +285,7 @@ if __name__ == '__main__':
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
-	
-	
-	cre_pipeline()
+	run_model_pipeline()
 
 
 
