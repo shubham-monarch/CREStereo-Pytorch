@@ -27,7 +27,7 @@ zed_vs_model_dir = "zed_vs_model"
 # zed_vs_model_depth_dir = f"{zed_vs_model_dir}/depth"
 
 # model output folders	
-model_directory = "model_output"
+# model_directory = "model_output"
 # model_disp_maps = f"{model_directory}/disparity_maps"
 # model_depth_maps = f"{model_directory}/depth_maps"
 # model_disp_vs_depth_maps = f"{model_directory}/disp_vs_depth"	
@@ -38,15 +38,11 @@ zed_input_disp_maps = f"{zed_input_dir}/disparity_maps"
 zed_input_depth_maps = f"{zed_input_dir}/depth_maps"
 zed_input_images= f"{zed_input_dir}/images"
 
-
-
 # zed output folders	
 # zed_output_dir = "zed_output"
 # zed_disp_maps = f"{zed_output_dir}/disparity_maps"
 # zed_depth_maps = f"{zed_output_dir}/depth_maps"
 # zed_disp_vs_depth_maps = f"{zed_output_dir}/disp_vs_depth"	
-
-	
 
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
@@ -113,13 +109,9 @@ def run_model_pipeline():
 			
 	progress_bar = tqdm(total=len(left_images))
 	for idx, (left_image, right_image) in enumerate(tqdm(zip(left_images, right_images)), start=0):
-		if idx  > 2 :
-			break
-		
-		# logging.debug(f"Processing {idx}th frame!")
+		frame_id = int(left_image.split(".")[0].split("_")[1])
 		progress_bar.update(1)
 
-		# print(f"Processing {idx}th frame!")
 		left_path = os.path.join(zed_input_images, left_image)
 		right_path = os.path.join(zed_input_images, right_image)
 
@@ -156,7 +148,7 @@ def run_model_pipeline():
 		model_depth_rgb = utils.get_rgb_depth(model_disp, BASELINE, FOCAL_LENGTH, t)
 		
 		# [ZED] Depth Calculations
-		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png", cv2.IMREAD_GRAYSCALE)
+		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{frame_id}.png", cv2.IMREAD_GRAYSCALE)
 		zed_depth = cv2.cvtColor(zed_depth, cv2.COLOR_GRAY2BGR)
 		zed_depth = cv2.resize(zed_depth, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t
 		zed_depth = (zed_depth - zed_depth.min()) / (zed_depth.max() - zed_depth.min()) * 255.0
@@ -173,7 +165,7 @@ def run_model_pipeline():
 		concat_images_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono])
 		concat_images_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb])
 		concat_images = cv2.vconcat([concat_images_bgr, concat_images_mono])
-		cv2.imwrite(f"{zed_vs_model_dir}/frame_{idx}.png",concat_images)	
+		cv2.imwrite(f"{zed_vs_model_dir}/frame_{frame_id}.png",concat_images)	
 		
 		# cv2.imshow("TEST", concat_images)
 		# cv2.waitKey(0)
@@ -189,8 +181,6 @@ if __name__ == '__main__':
 	#left_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/left.png")
 	#right_img = imread_from_url("https://raw.githubusercontent.com/megvii-research/CREStereo/master/img/test/right.png")
 
-	# cv2 window parameters
-	
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
 	run_model_pipeline()
 

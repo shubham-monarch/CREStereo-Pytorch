@@ -3,7 +3,6 @@
 import cv2
 import numpy as np
 
-# TODO: add assert for disp.shape
 def get_mono_depth(disp, baseline, focal_length, gpu_t):
 	assert(disp.ndim == 2)
 	depth_ = (baseline * focal_length) / (disp + 1e-6)
