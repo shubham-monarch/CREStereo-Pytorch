@@ -179,20 +179,21 @@ def run_model_pipeline():
 
 
 		# [ZED] Depth Calculations
-		zed_disp = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
-		zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t			
-		zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
+		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
+		zed_depth = cv2.resize(zed_depth, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t			
+		zed_depth_vis = (zed_depth - zed_depth.min()) / (zed_depth.max() - zed_depth.min()) * 255.0
 
-		zed_disp_mono = zed_disp_vis.astype("uint8")	
-		zed_disp_rgb = cv2.applyColorMap(zed_disp_mono, cv2.COLORMAP_INFERNO)
-		zed_disp_mono_vs_rgb = cv2.hconcat([zed_disp_mono, zed_disp_rgb])
+		zed_depth_mono = zed_depth_vis.astype("uint8")	
+		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)
+		zed_depth_mono_vs_rgb = cv2.hconcat([zed_depth_mono, zed_depth_rgb])
 
 		# [ZED] saving grayscale + colored depth map
-		cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_disp_mono_vs_rgb)
+		cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_depth_mono_vs_rgb)
 
-		# # [ZED] Disparity Calculations
-		# zed_disp = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
+		# # # [ZED] Disparity Calculations
+		# zed_disp = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
 		# zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		
 		# # # print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
 		
 		# zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
