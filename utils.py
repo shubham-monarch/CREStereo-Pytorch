@@ -22,3 +22,13 @@ def get_mono_disparity(depth, baseline, focal_length, gpu_t):
 	disp = cv2.resize(disp_, depth.shape[::-1], interpolation=cv2.INTER_LINEAR) * gpu_t	
 	disp_vis = (disp - disp.min()) / (disp.max() - disp.min()) * 255.0
 	return disp_vis.astype("uint8")
+
+def add_label(image, label):
+	position = (50, 50)  # (x, y)
+	font = cv2.FONT_HERSHEY_SIMPLEX
+	scale = 1
+	color = (255, 255, 255)  # white
+	thickness = 2
+	cv2.putText(image, label, position, font, scale, color, thickness)
+	return image
+
