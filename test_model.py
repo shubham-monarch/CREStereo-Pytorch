@@ -21,8 +21,8 @@ BASELINE = 0.13
 FOCAL_LENGTH = 1093.5
 
 # comparison folders
-disp_comparison_dir = "comparison/disparity"
-depth_comparison_dir = "comparison/depth"
+zed_vs_model_disp_dir = "zed_vs_model/disparity"
+zed_vs_model_depth_dir = "zed_vs_model/depth"
 
 # model output folders	
 model_directory = "model_output"
@@ -85,7 +85,7 @@ def inference(left, right, model, n_iter=20):
 def run_model_pipeline():
 	for path in [	
 					# model_disp_maps, model_depth_maps, model_disp_vs_depth_maps, \
-					zed_disp_maps, zed_depth_maps
+					zed_disp_maps, zed_depth_maps,zed_disp_vs_depth_maps
 					]:
 		try:
 			shutil.rmtree(path)
@@ -93,9 +93,9 @@ def run_model_pipeline():
 		except OSError as e:
 			logging.error(f"Error deleting folder: {e.strerror}")
 
-	for path in [disp_comparison_dir, depth_comparison_dir, \
+	for path in [zed_vs_model_disp_dir, zed_vs_model_depth_dir, \
 					model_disp_maps, model_depth_maps, model_disp_vs_depth_maps, \
-					zed_disp_maps, zed_depth_maps]:
+					zed_disp_maps, zed_depth_maps,zed_disp_vs_depth_maps]:
 		try:
 			os.makedirs(path, exist_ok=True)
 		except OSError as e:
@@ -180,6 +180,7 @@ def run_model_pipeline():
 
 		# [ZED] Depth Calculations
 		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
+		logging.debug(f"zed_depth.shape: {zed_depth.shape}")	
 		zed_depth = cv2.resize(zed_depth, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t			
 		zed_depth_vis = (zed_depth - zed_depth.min()) / (zed_depth.max() - zed_depth.min()) * 255.0
 
@@ -187,33 +188,30 @@ def run_model_pipeline():
 		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)
 		zed_depth_mono_vs_rgb = cv2.hconcat([zed_depth_mono, zed_depth_rgb])
 
-		# [ZED] saving grayscale + colored depth map
+		# [ZED] writing grayscale + colored depth map
 		cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_depth_mono_vs_rgb)
 
-		# # # [ZED] Disparity Calculations
-		# zed_disp = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
-		# zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
+		# # [ZED] Disparity Calculations
+		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png", cv2.IMREAD_GRAYSCALE)
+		zed_disp = utils.get_mono_disparity(zed_depth, 1, FOCAL_LENGTH, t)
 		
-		# # # print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
-		
-		# zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
-		
-		# zed_disp_mono = zed_disp_vis.astype("uint8")	
-		# zed_disp_rgb = cv2.applyColorMap(zed_disp_mono, cv2.COLORMAP_INFERNO)
-		# logging.debug(f"zed_disp_mono.shape: {np.expand_dims(zed_disp_mono, axis=-1).shape} zed_disp_rgb.shape: {zed_disp_rgb.shape}")	
-		# zed_disp_mono_vs_rgb = cv2.hconcat([zed_disp_mono, zed_disp_rgb])
+		zed_disp_mono = zed_disp.astype("uint8")	
+		zed_disp_rgb = cv2.applyColorMap(zed_disp_mono, cv2.COLORMAP_INFERNO)
+		zed_disp_mono_vs_rgb = cv2.hconcat([np.tile(np.expand_dims(zed_disp_mono,axis=-1), (1,1,3)), zed_disp_rgb])
 
-		# # [ZED] saving grayscale + colored disparity map
-		# cv2.imwrite(f"{zed_disparity_maps}/frame_{idx}.png", zed_disp_rgb)
+		# [ZED] writing grayscale + colored disparity map
+		cv2.imwrite(f"{zed_disp_maps}/frame_{idx}.png", zed_disp_mono_vs_rgb)
+		
+		# [ZED] writing disparity vs [MODEL] depth
+		cv2.imwrite(f"{zed_disp_vs_depth_maps}/frame_{idx}.png", cv2.vconcat([zed_disp_mono_vs_rgb, zed_depth_mono_vs_rgb]))
 
 		
-		
-		# # saving [ZED] vs [MODEL] Disparity	
-		# # logging.debug(f"zed_disp_mono.shape: {zed_disp_mono.shape} model_disp_mono.shape: {model_disp_mono.shape}")
-		# zed_vs_model_disp_mono = cv2.hconcat([zed_disp_mono[:, :, ], model_disp_mono])
-		# zed_vs_model_disp_rgb = cv2.hconcat([zed_disp_rgb, model_disp_rgb])
-		# zed_vs_model_disp = cv2.vconcat([zed_vs_model_disp_mono, zed_vs_model_disp_rgb])
-		# cv2.imwrite(f"{disparity_comparison_dir}/frame_{idx}.png", zed_vs_model_disp)
+		# saving [ZED] vs [MODEL] Disparity	
+		# logging.debug(f"zed_disp_mono.shape: {zed_disp_mono.shape} model_disp_mono.shape: {model_disp_mono.shape}")
+		zed_vs_model_disp_mono = cv2.hconcat([zed_disp_mono[:, :, ], model_disp_mono])
+		zed_vs_model_disp_rgb = cv2.hconcat([zed_disp_rgb, model_disp_rgb])
+		zed_vs_model_disp = cv2.vconcat([zed_vs_model_disp_mono, zed_vs_model_disp_rgb])
+		cv2.imwrite(f"{disparity_comparison_dir}/frame_{idx}.png", zed_vs_model_disp)
 
 		# # saving [ZED] vs [MODEL] Depth
 		# zed_vs_model_depth_mono = cv2.hconcat([zed_depth_mono, model_depth_mono])

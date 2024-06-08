@@ -75,8 +75,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 		depth_map_data = 255 - depth_map_data
 		depth_map_data = (depth_map_data - depth_map_data.min()) / (depth_map_data.max() - depth_map_data.min()) * 255.0
 
-		logging.info(f"disp_map.get_data().shape: {depth_map.get_data().shape} \
-			disp_map.get_data().dtype: {depth_map.get_data().dtype}")
+		logging.info(f"depth_map_data.shape: {depth_map_data.shape}")
 		cv2.imwrite( os.path.join(zed_input_depth_maps, f'frame_{i}.png'), depth_map_data)
 
 		i += 1
