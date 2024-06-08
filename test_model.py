@@ -83,9 +83,10 @@ def inference(left, right, model, n_iter=20):
 	return pred_disp
 
 def run_model_pipeline():
-	for path in [disp_comparison_dir, depth_comparison_dir, \
-					model_disp_maps, model_depth_maps, model_disp_vs_depth_maps, \
-					zed_disp_maps, zed_depth_maps]:
+	for path in [	
+					# model_disp_maps, model_depth_maps, model_disp_vs_depth_maps, \
+					zed_disp_maps, zed_depth_maps
+					]:
 		try:
 			shutil.rmtree(path)
 			print(f"Directory '{path}' has been removed successsfully.")
@@ -178,19 +179,21 @@ def run_model_pipeline():
 
 
 		# [ZED] Depth Calculations
-		# zed_depth_mono = utils.get_mono_depth(zed_disp[:, : , 0], BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_rgb = utils.get_rgb_depth(zed_disp[:, :, 0], BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_mono = utils.get_mono_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_rgb = utils.get_rgb_depth(zed_disp, BASELINE, FOCAL_LENGTH, t)
-		# zed_depth_mono_vs_rgb = cv2.hconcat([zed_depth_mono, zed_depth_rgb])
+		zed_disp = cv2.imread(f"{zed_input_depth_maps}/frame_{idx}.png")
+		zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t			
+		zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
 
-		# # [ZED] saving grayscale + colored depth map
-		# cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_depth_mono_vs_rgb)
+		zed_disp_mono = zed_disp_vis.astype("uint8")	
+		zed_disp_rgb = cv2.applyColorMap(zed_disp_mono, cv2.COLORMAP_INFERNO)
+		zed_disp_mono_vs_rgb = cv2.hconcat([zed_disp_mono, zed_disp_rgb])
+
+		# [ZED] saving grayscale + colored depth map
+		cv2.imwrite(f"{zed_depth_maps}/frame_{idx}.png", zed_disp_mono_vs_rgb)
 
 		# # [ZED] Disparity Calculations
 		# zed_disp = cv2.imread(f"{zed_disparity_maps}/frame_{idx}.png")
 		# zed_disp = cv2.resize(zed_disp, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
-		# # print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
+		# # # print(f"type(zed_disp): {type(zed_disp)} zed_disp.shape: {zed_disp.shape}")
 		
 		# zed_disp_vis = (zed_disp - zed_disp.min()) / (zed_disp.max() - zed_disp.min()) * 255.0
 		
