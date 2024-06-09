@@ -92,10 +92,10 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# retrieve absolute depth map
 			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
 			# contains depth data in meters
-			depth_map_data = depth_map.get_data()
+			svo_depth_map_data = depth_map.get_data()
 			
 			# depth data in uint8 format normalized between 0-255	
-			depth_map_unit8 = utils.uint8_normalization(depth_map_data)
+			svo_depth_map_unit8 = utils.uint8_normalization(svo_depth_map_data)
 
 			# cv2.imshow("ZED", depth_map_unit8)	
 			# cv2.waitKey(0)
@@ -127,19 +127,17 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			model_depth_map_mono = cv2.cvtColor(model_depth_map_mono, cv2.COLOR_GRAY2BGR)
 			model_depth_map_rgb = cv2.applyColorMap(model_depth_map_mono, cv2.COLORMAP_INFERNO)
 
-			cv2.imshow("MODEL", cv2.hconcat([model_depth_map_rgb, model_depth_map_mono]))
-			cv2.waitKey(0)
+			# cv2.imshow("MODEL", cv2.hconcat([model_depth_map_rgb, model_depth_map_mono]))
+			# cv2.waitKey(0)
 
-			# # # [ZED] Depth Calculations
-			# # zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{frame_id}.png", cv2.IMREAD_GRAYSCALE)
-			# # zed_depth = cv2.cvtColor(zed_depth, cv2.COLOR_GRAY2BGR)
-			# # zed_depth = cv2.resize(zed_depth, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t
-			# # zed_depth = (zed_depth - zed_depth.min()) / (zed_depth.max() - zed_depth.min()) * 255.0
-			# # zed_depth = zed_depth.astype(np.uint8)
+			# [ZED] Depth Calculations
+			zed_depth_map_mono = svo_depth_map_unit8
+			# converting zed_depth_map_mono to 3-channel image
+			zed_depth_map_mono = cv2.cvtColor(zed_depth_map_mono, cv2.COLOR_GRAY2BGR)
+			zed_depth_map_rgb = cv2.applyColorMap(zed_depth_map_mono, cv2.COLORMAP_INFERNO)
 			
-			# # zed_depth_mono = zed_depth
-			# # # zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
-			# # zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
+			cv2.imshow("ZED", cv2.hconcat([zed_depth_map_rgb, zed_depth_map_mono]))
+			cv2.waitKey(0)
 			
 			# # # [ZED vs MODEL] Depth Calculations
 			# # left_img_bgr = left_img
