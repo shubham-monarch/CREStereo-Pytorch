@@ -17,9 +17,7 @@ import testing
 
 device = 'cuda'
 
-# camera parameters
-BASELINE = 0.13
-FOCAL_LENGTH = 1093.5
+
 
 # comparison folders
 zed_vs_model_dir = "zed_vs_model"
@@ -82,6 +80,16 @@ def inference(left, right, model, n_iter=20):
 	pred_disp = torch.squeeze(pred_flow[:, 0, :, :]).cpu().detach().numpy()
 
 	return pred_disp
+
+
+def INFERENCE(imgL, imgR):
+	model_path = "models/crestereo_eth3d.pth"
+	model = Model(max_disp=256, mixed_precision=False, test_mode=True)
+	model.load_state_dict(torch.load(model_path), strict=True)
+	model.to(device)
+	model.eval()
+	pred = inference(imgL, imgR, model, n_iter=5)
+	return pred
 
 def run_model_pipeline():
 	for path in [zed_vs_model_dir, zed_vs_model_heatmap_dir]:	
