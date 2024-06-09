@@ -130,6 +130,13 @@ def run_model_pipeline():
 		imgL = cv2.resize(left_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
 		imgR = cv2.resize(right_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
 		
+		# imgL_cropped = utils.crop_image(imgL, 0.1, 1.0)
+		# imgR_cropped = utils.crop_image(imgR, 0.1, 1.0)
+		# logging.debug(f"imgL_cropped.shape: {imgL_cropped.shape} imgR_cropped.shape: {imgR_cropped.shape}")
+
+		# cv2.imshow("TEST", cv2.vconcat([imgL_cropped, imgL]))
+		# cv2.waitKey(0)
+
 		model_path = "models/crestereo_eth3d.pth"
 
 		model = Model(max_disp=256, mixed_precision=False, test_mode=True)
@@ -138,6 +145,7 @@ def run_model_pipeline():
 		model.eval()
 
 		pred = inference(imgL, imgR, model, n_iter=5)
+		# pred = inference(imgL_cropped, imgR_cropped, model, n_iter=5)
 		t = float(in_w) / float(eval_w)
 		
 		# [MODEL] Depth Calculations
@@ -147,6 +155,12 @@ def run_model_pipeline():
 		model_depth_mono = cv2.cvtColor(model_depth_mono, cv2.COLOR_GRAY2BGR) 
 		model_depth_rgb = utils.get_rgb_depth(model_disp, BASELINE, FOCAL_LENGTH, t)
 		
+		# cv2.imshow("TEST", cv2.hconcat([model_depth_rgb, model_depth_mono]))	
+		# cv2.waitKey(0)
+
+		# cv2.imshow("TEST", cv2.hconcat([imgL_cropped, model_depth_rgb, model_depth_mono]))	
+		# cv2.waitKey(0)
+			
 		# [ZED] Depth Calculations
 		zed_depth = cv2.imread(f"{zed_input_depth_maps}/frame_{frame_id}.png", cv2.IMREAD_GRAYSCALE)
 		zed_depth = cv2.cvtColor(zed_depth, cv2.COLOR_GRAY2BGR)
@@ -155,23 +169,39 @@ def run_model_pipeline():
 		zed_depth = zed_depth.astype(np.uint8)
 		
 		zed_depth_mono = zed_depth
-		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
+		# zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
+		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_JET)	
 		
-		# [ZED vs MODEL] Calculations
+		# [ZED vs MODEL] Depth Calculations
 		left_img_bgr = left_img
+		# # cropping the image
+		# logging.debug("[before cropping] left_img_bgr.shape: %s", left_img_bgr.shape)
+		# a = utils.crop_image(left_img_bgr, 0.7, 1.0)	
+		# logging.debug("[after cropping] left_img_bgr.shape: %s", a.shape)
+		
 		left_img_mono = cv2.cvtColor(left_img, cv2.COLOR_BGR2GRAY)
 		left_img_mono = cv2.cvtColor(left_img_mono, cv2.COLOR_GRAY2BGR)
 
-		concat_images_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono])
-		concat_images_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb])
-		concat_images = cv2.vconcat([concat_images_bgr, concat_images_mono])
-		cv2.imwrite(f"{zed_vs_model_dir}/frame_{frame_id}.png",concat_images)	
-		
+		concat_depth_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono])
+		concat_depth_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb])
+		concat_depth = cv2.vconcat([concat_depth_bgr, concat_depth_mono])
+		cv2.imwrite(f"{zed_vs_model_dir}/frame_{frame_id}.png",concat_depth)	
 		# cv2.imshow("TEST", concat_images)
 		# cv2.waitKey(0)
+		
+		# error_map = utils.create_depth_error_heatmap(model_depth_rgb, zed_depth_rgb, zed_vs_model_dir, frame_id)
+		error_map_mono = utils.create_depth_error_heatmap(model_depth_mono, zed_depth_mono, zed_vs_model_dir, frame_id)
+		concat_error_depth = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono, error_map_mono])
+		# concat_error_depth = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, error_map])
 
-		# cv2 cleanup
-		cv2.destroyAllWindows()
+		cv2.imshow("TEST", concat_error_depth)
+		cv2.waitKey(0)
+		
+		if idx > 0:
+			break
+		
+	# cv2 cleanup
+	cv2.destroyAllWindows()
 
 	progress_bar.close()
 

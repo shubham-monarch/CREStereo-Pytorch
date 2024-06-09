@@ -74,31 +74,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 
 			# logging.info(f"depth_map_data.shape: {depth_map_data.shape}")
 			cv2.imwrite( os.path.join(zed_input_depth_maps, f'frame_{i}.png'), depth_map_data)
-
-			
-
-	# i = 0
-	# for i in tqdm(range(0, num_frames, 30)):
-	# 	svo_position = zed.get_svo_position()
-	# 	if zed.grab() == sl.ERROR_CODE.SUCCESS: 
-	# 		if i == svo_position: 
-	# 			logging.info(f"Processing {i}th frame!")
-	# 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
-	# 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
-	# 			image_l.write( os.path.join(zed_input_images, f'left_{i}.png') )
-	# 			image_r.write( os.path.join(zed_input_images, f'right_{i}.png') )
-		
-	# 		# retrieve and write depth map
-	# 		# zed.retrieve_image(depth_map, sl.VIEW.DEPTH)
-	# 		# depth_map_data = depth_map.get_data()[:, : , 0]
-	# 		# depth_map_data = 255 - depth_map_data
-	# 		# depth_map_data = (depth_map_data - depth_map_data.min()) / (depth_map_data.max() - depth_map_data.min()) * 255.0
-
-	# 		# logging.info(f"depth_map_data.shape: {depth_map_data.shape}")
-	# 		# cv2.imwrite( os.path.join(zed_input_depth_maps, f'frame_{i}.png'), depth_map_data)
-
-		
-
+	
 if __name__ == '__main__':
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
