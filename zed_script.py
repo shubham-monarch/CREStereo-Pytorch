@@ -11,7 +11,7 @@ import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import utils
-
+import random
 import test_model
 
 # camera parameters
@@ -60,6 +60,9 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	image_l = sl.Mat()
 	image_r = sl.Mat()
 	depth_map = sl.Mat()
+
+	mean_depth_errors = []
+	variance_depth_errors= []
 			
 	runtime_parameters = sl.RuntimeParameters()
 	runtime_parameters.enable_fill_mode	= True
@@ -68,10 +71,12 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	# logging.debug(f"Total number of frames in the svo file: {total_svo_frames}")	
 
 	# setting cv2 window
-	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("TEST", 1000, 1000)
-
-	for i in tqdm(range(0, num_frames, 30)):
+	# cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
+	# cv2.resizeWindow("TEST", 1000, 1000)
+	assert num_frames <= total_svo_frames, "num_frames should be less than total_svo_frames"
+	
+	random_frames = random.sample(range(0, total_svo_frames), num_frames)
+	for i in tqdm(random_frames):
 		if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
 			
 			# logging.debug(f"Processing {i}th frame!s")
@@ -116,7 +121,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# [MODEL] Depth Calculations
 			# disparity data in meters
 			model_disp_data = cv2.resize(pred, (in_w, in_h), interpolation=cv2.INTER_LINEAR) * t	
-			logging.debug(f"model_disp_data.shape: {model_disp_data.shape} model_disp_data.dtype: {model_disp_data.dtype}")
+			# logging.debug(f"model_disp_data.shape: {model_disp_data.shape} model_disp_data.dtype: {model_disp_data.dtype}")
 			
 			model_depth_data = utils.get_depth_data(model_disp_data, BASELINE, FOCAL_LENGTH)
 			model_depth_map_mono = utils.uint8_normalization(model_depth_data)
@@ -143,6 +148,9 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			zed_depth_data_filtered = utils.inf_filtering(zed_depth_data)
 
 			depth_error_data = cv2.absdiff(model_depth_data_filtered, zed_depth_data_filtered)
+			mean_depth_errors.append(np.mean(depth_error_data))
+			variance_depth_errors.append(np.var(depth_error_data))
+
 			depth_error_map_mono = utils.uint8_normalization(depth_error_data)
 			# converting depth_error_map_mono to 3-channel image
 			depth_error_map_mono = cv2.cvtColor(depth_error_map_mono, cv2.COLOR_GRAY2BGR)
@@ -155,12 +163,27 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			
 	zed.close()
 
+	logging.info("Finished processing all the frames.")
+
+	plt.figure(figsize=(12, 6))
+
+	plt.subplot(1, 2, 1)
+	plt.hist(mean_depth_errors, bins=200, color='blue', edgecolor='black')
+	plt.title('Histogram of Mean Errors')
+
+	plt.subplot(1, 2, 2)
+	plt.hist(variance_depth_errors, bins=200, color='red', edgecolor='black')
+	plt.title('Histogram of Variance Errors')
+
+	plt.show()
+
+
 
 
 if __name__ == '__main__':
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
 	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
-	num_frames = 60
+	num_frames = 200
 	run_zed_pipeline(svo_file, num_frames)
 	
