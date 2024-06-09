@@ -138,6 +138,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# cv2.waitKey(0)
 			
 			# [ZED vs MODEL] Depth Calculations
+			# filtering inf values 
 			model_depth_data_filtered = utils.inf_filtering(model_depth_data)
 			zed_depth_data_filtered = utils.inf_filtering(zed_depth_data)
 
@@ -147,10 +148,10 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			depth_error_map_mono = cv2.cvtColor(depth_error_map_mono, cv2.COLOR_GRAY2BGR)
 			depth_error_map_rgb = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
 
-			a = cv2.hconcat([model_depth_map_mono, zed_depth_map_mono, depth_error_map_mono])
-			b = cv2.hconcat([model_depth_map_rgb, zed_depth_map_rgb, depth_error_map_rgb])
-			cv2.imshow("TEST", cv2.vconcat([a, b]))
-			cv2.waitKey(0)
+			# a = cv2.hconcat([model_depth_map_mono, zed_depth_map_mono, depth_error_map_mono])
+			# b = cv2.hconcat([model_depth_map_rgb, zed_depth_map_rgb, depth_error_map_rgb])
+			# cv2.imshow("TEST", cv2.vconcat([a, b]))
+			# cv2.waitKey(0)
 			
 	zed.close()
 
