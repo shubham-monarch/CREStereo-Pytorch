@@ -66,5 +66,5 @@ def percentage_infinite_points(image):
 def uint8_normalization(depth_map):
 	max_depth = np.max(depth_map[np.isfinite(depth_map)])
 	depth_map_finite = np.where(np.isinf(depth_map), max_depth, depth_map)
-	depth_map_8U = cv2.normalize(depth_map_finite, depth_map_finite, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-	return depth_map_8U
+	depth_map_uint8 = cv2.normalize(depth_map_finite, depth_map_finite, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+	return depth_map_uint8

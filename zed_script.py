@@ -76,61 +76,13 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			image_l.write( os.path.join(zed_input_images, f'left_{i}.png') )
 			image_r.write( os.path.join(zed_input_images, f'right_{i}.png') )
 			
-			# # retrieve and write depth map
-			# zed.retrieve_image(depth_map, sl.VIEW.DEPTH)
-			# depth_map_data = depth_map.get_data()[:, : , 0]
-			# depth_map_data = 255 - depth_map_data
-			# depth_map_data = (depth_map_data - depth_map_data.min()) / (depth_map_data.max() - depth_map_data.min()) * 255.0
-
 			# retrieve absolute depth map
 			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
-
-
-			logging.debug(f"percentage of infinite points: {utils.percentage_infinite_points(depth_map.get_data())}")
-			
 			depth_map_data = depth_map.get_data()	
+			depth_map_unit8 = utils.uint8_normalization(depth_map_data)
 
-			logging.debug(f"depth_map_data.shape: {depth_map_data.shape} depth_map_data.type: {depth_map_data.dtype}")
-			depth_map_8U = utils.uint8_normalization(depth_map_data)
-			logging.debug(f"uint8_depth_map.shape: {depth_map_8U.shape} uint8_depth_map.type: {depth_map_8U.dtype}")
-
-			cv2.imshow("ZED", depth_map_8U)
+			cv2.imshow("ZED", depth_map_unit8)	
 			cv2.waitKey(0)
-			
-			# depth_map_data = depth_map.get_data()
-			# depth_map_data = depth_map.get_data()
-
-			# # Create a mask of finite values
-			# finite_mask = np.isfinite(depth_map_data)
-
-			# logging.debug(f"depth_map_data.shape: {depth_map_data.shape}")	
-			# depth_map_data = depth_map_data[finite_mask]
-			# logging.debug(f"depth_map_data.shape: {depth_map_data.shape}")
-
-			# # Apply the mask to flatten only finite values
-			# depth_map_data_1d = depth_map_data[finite_mask].flatten()
-
-			# # Create histogram
-			# plt.hist(depth_map_data_1d, bins='auto')
-
-			# # Show the plot
-			# plt.show()
-
-			
-			
-			
-			# logging.debug(f"depth_map_data.shape: {depth_map_data.shape} depth_map_data.type: {depth_map_data.dtype}")
-			# logging.debug(f"depth_map_data: {depth_map_data[:5, :5]}")
-			# logging.debug(f"depth_map_data.min(): {depth_map_data.min()} depth_map_data.max(): {depth_map_data.max()}")	
-			# # logging.info(f"depth_map_data.shape: {depth_map_data.shape}")
-			# # cv2.imwrite( os.path.join(zed_input_depth_maps, f'frame_{i}.png'), depth_map_data)
-			# depth_map_data = cv2.normalize(depth_map_data, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-			# logging.debug(f"depth_map_data.shape: {depth_map_data.shape} depth_map_data.type: {depth_map_data.dtype}")
-			# logging.debug(f"depth_map_data: {depth_map_data[:5, :5]}")
-			# cv2.imshow("ZED", depth_map_data)
-			# cv2.waitKey(0)
-
-
 
 
 
