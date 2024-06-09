@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import logging
 
+
 def get_mono_depth(disp, baseline, focal_length, gpu_t):
 	assert(disp.ndim == 2)
 	depth_ = (baseline * focal_length) / (disp + 1e-6)
@@ -46,12 +47,24 @@ def crop_image(image, height_percent, width_percent):
 
 
 def is_grayscale(image):
-    grayscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    grayscale_image_bgr = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
-    return np.array_equal(image, grayscale_image_bgr)
+	grayscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	grayscale_image_bgr = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
+	return np.array_equal(image, grayscale_image_bgr)
 
 
 def get_error_heatmap(model_depth_map, zed_depth_map):
 	depth_error = cv2.absdiff(model_depth_map, zed_depth_map)
 	depth_error = cv2.normalize(depth_error, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 	return depth_error	
+
+def percentage_infinite_points(image):
+	total_points = image.size
+	infinite_points = np.sum(np.isinf(image))
+	percentage = (infinite_points / total_points) * 100
+	return percentage
+
+def uint8_normalization(depth_map):
+	max_depth = np.max(depth_map[np.isfinite(depth_map)])
+	depth_map_finite = np.where(np.isinf(depth_map), max_depth, depth_map)
+	depth_map_8U = cv2.normalize(depth_map_finite, depth_map_finite, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+	return depth_map_8U

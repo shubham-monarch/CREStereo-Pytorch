@@ -185,22 +185,26 @@ def run_model_pipeline():
 		# cv2.imshow("TEST", concat_images)
 		# cv2.waitKey(0)
 		
-		# [ZED vs MODEL] Heatmap Calculations
-		# error_map = utils.create_depth_error_heatmap(model_depth_rgb, zed_depth_rgb, zed_vs_model_dir, frame_id)
-		depth_error_map_mono = utils.get_error_heatmap(model_depth_mono, zed_depth_mono)
-		depth_error_map_bgr = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
-		depth_eror_map_concat_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono, depth_error_map_mono])
-		depth_error_map_concat_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, depth_error_map_bgr])
-		# concat_error_depth = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, error_map])
-		# concat_error_depth = cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono])
+		# # [ZED vs MODEL] Heatmap Calculations
+		# # error_map = utils.create_depth_error_heatmap(model_depth_rgb, zed_depth_rgb, zed_vs_model_dir, frame_id)
+		# depth_error_map_mono = utils.get_error_heatmap(model_depth_mono, zed_depth_mono)
+		# depth_error_map_bgr = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
+		# depth_eror_map_concat_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono, depth_error_map_mono])
+		# depth_error_map_concat_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, depth_error_map_bgr])
+		# # concat_error_depth = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, error_map])
+		# # concat_error_depth = cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono])
+		# cv2.imshow("TEST", cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))
+		# cv2.imwrite(f"{zed_vs_model_heatmap_dir}/frame_{frame_id}.png",cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))	
+		# cv2.waitKey(0)
+		
+		# [ZED vs MODEL] Absolute Error Heatmap
+		model_depth_data = 	(BASELINE * FOCAL_LENGTH) / (model_disp + 1e-6)
+		logging.debug(f"model_depth_data: {model_depth_data[:5][:5]}")
 
-		cv2.imshow("TEST", cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))
-		cv2.imwrite(f"{zed_vs_model_heatmap_dir}/frame_{frame_id}.png",cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))	
-		
-		
-		cv2.waitKey(0)
-		
-		if idx > 3:
+
+
+
+		if idx > 0:
 			break
 		
 	# cv2 cleanup
