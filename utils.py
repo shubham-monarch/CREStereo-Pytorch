@@ -31,7 +31,7 @@ def plot_histogram(image, title):
 	# plt.close('all')
 	plt.show() 
 	
-def filter_for_inf(depth_map):
+def inf_filtering(depth_map):
 	max_depth = np.max(depth_map[np.isfinite(depth_map)])
 	depth_map_finite = np.where(np.isinf(depth_map), max_depth, depth_map)
 	return depth_map_finite

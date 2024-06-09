@@ -68,11 +68,8 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	# logging.debug(f"Total number of frames in the svo file: {total_svo_frames}")	
 
 	# setting cv2 window
-	cv2.namedWindow("ZED", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("ZED", 1000, 1000)
-
-	cv2.namedWindow("MODEL", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("MODEL", 1000, 1000)
+	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
+	cv2.resizeWindow("TEST", 1000, 1000)
 
 	for i in tqdm(range(0, num_frames, 30)):
 		if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
@@ -131,25 +128,38 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# cv2.waitKey(0)
 
 			# [ZED] Depth Calculations
-			zed_depth_map_mono = svo_depth_map_unit8
+			zed_depth_data = svo_depth_map_data
+			zed_depth_map_mono = utils.uint8_normalization(zed_depth_data)
 			# converting zed_depth_map_mono to 3-channel image
 			zed_depth_map_mono = cv2.cvtColor(zed_depth_map_mono, cv2.COLOR_GRAY2BGR)
 			zed_depth_map_rgb = cv2.applyColorMap(zed_depth_map_mono, cv2.COLORMAP_INFERNO)
 			
-			cv2.imshow("ZED", cv2.hconcat([zed_depth_map_rgb, zed_depth_map_mono]))
-			cv2.waitKey(0)
+			# cv2.imshow("ZED", cv2.hconcat([zed_depth_map_rgb, zed_depth_map_mono]))
+			# cv2.waitKey(0)
 			
-			# # # [ZED vs MODEL] Depth Calculations
-			# # left_img_bgr = left_img
-			# # left_img_mono = cv2.cvtColor(left_img, cv2.COLOR_BGR2GRAY)
-			# # left_img_mono = cv2.cvtColor(left_img_mono, cv2.COLOR_GRAY2BGR)
+			# [ZED vs MODEL] Depth Calculations
+			model_depth_data_filtered = utils.inf_filtering(model_depth_data)
+			zed_depth_data_filtered = utils.inf_filtering(zed_depth_data)
 
-			# # concat_depth_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono])
-			# # concat_depth_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb])
-			# # concat_depth = cv2.vconcat([concat_depth_bgr, concat_depth_mono])
-			# # cv2.imwrite(f"{zed_vs_model_dir}/frame_{frame_id}.png",concat_depth)	
-			# # # cv2.imshow("TEST", concat_images)
-			# # # cv2.waitKey(0)
+			depth_error_data = cv2.absdiff(model_depth_data_filtered, zed_depth_data_filtered)
+			depth_error_map_mono = utils.uint8_normalization(depth_error_data)
+			# converting depth_error_map_mono to 3-channel image
+			depth_error_map_mono = cv2.cvtColor(depth_error_map_mono, cv2.COLOR_GRAY2BGR)
+			depth_error_map_rgb = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
+
+			a = cv2.hconcat([model_depth_map_mono, zed_depth_map_mono, depth_error_map_mono])
+			b = cv2.hconcat([model_depth_map_rgb, zed_depth_map_rgb, depth_error_map_rgb])
+			cv2.imshow("TEST", cv2.vconcat([a, b]))
+			cv2.waitKey(0)
+			# cv2.imshow("TEST", cv2.hconcat([depth_error_map_mono, depth_error_map_rgb]))
+			# cv2.waitKey(0)
+			
+			# concat_depth_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono])
+			# concat_depth_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb])
+			# concat_depth = cv2.vconcat([concat_depth_bgr, concat_depth_mono])
+			# cv2.imwrite(f"{zed_vs_model_dir}/frame_{frame_id}.png",concat_depth)	
+			# # cv2.imshow("TEST", concat_images)
+			# # cv2.waitKey(0)
 			
 			# # # # [ZED vs MODEL] Heatmap Calculations
 			# # # # error_map = utils.create_depth_error_heatmap(model_depth_rgb, zed_depth_rgb, zed_vs_model_dir, frame_id)
