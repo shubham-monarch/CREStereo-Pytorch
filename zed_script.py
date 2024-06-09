@@ -57,9 +57,12 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	runtime_parameters = sl.RuntimeParameters()
 	runtime_parameters.enable_fill_mode	= True
 	
+	total_svo_frames = zed.get_svo_number_of_frames()
+	logging.debug(f"Total number of frames in the svo file: {total_svo_frames}")	
+	
 	for i in tqdm(range(0, num_frames, 30)):
 		if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-			# logging.debug(f"Processing {i}th frame!")
+			# logging.debug(f"Processing {i}th frame!s")
 			zed.set_svo_position(i)	
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image

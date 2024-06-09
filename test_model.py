@@ -23,6 +23,7 @@ FOCAL_LENGTH = 1093.5
 
 # comparison folders
 zed_vs_model_dir = "zed_vs_model"
+zed_vs_model_heatmap_dir = f"{zed_vs_model_dir}/heatmap"
 # zed_vs_model_disp_dir = f"{zed_vs_model_dir}/disparity"
 # zed_vs_model_depth_dir = f"{zed_vs_model_dir}/depth"
 
@@ -83,14 +84,14 @@ def inference(left, right, model, n_iter=20):
 	return pred_disp
 
 def run_model_pipeline():
-	for path in [zed_vs_model_dir]:	
+	for path in [zed_vs_model_dir, zed_vs_model_heatmap_dir]:	
 		try:
 			shutil.rmtree(path)
 			print(f"Directory '{path}' has been removed successsfully.")
 		except OSError as e:
 			logging.error(f"Error deleting folder: {e.strerror}")
 
-	for path in [zed_vs_model_dir]:
+	for path in [zed_vs_model_dir, zed_vs_model_heatmap_dir]:
 		try:
 			os.makedirs(path, exist_ok=True)
 		except OSError as e:
@@ -170,15 +171,10 @@ def run_model_pipeline():
 		
 		zed_depth_mono = zed_depth
 		# zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
-		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_JET)	
+		zed_depth_rgb = cv2.applyColorMap(zed_depth_mono, cv2.COLORMAP_INFERNO)	
 		
 		# [ZED vs MODEL] Depth Calculations
 		left_img_bgr = left_img
-		# # cropping the image
-		# logging.debug("[before cropping] left_img_bgr.shape: %s", left_img_bgr.shape)
-		# a = utils.crop_image(left_img_bgr, 0.7, 1.0)	
-		# logging.debug("[after cropping] left_img_bgr.shape: %s", a.shape)
-		
 		left_img_mono = cv2.cvtColor(left_img, cv2.COLOR_BGR2GRAY)
 		left_img_mono = cv2.cvtColor(left_img_mono, cv2.COLOR_GRAY2BGR)
 
@@ -189,15 +185,22 @@ def run_model_pipeline():
 		# cv2.imshow("TEST", concat_images)
 		# cv2.waitKey(0)
 		
+		# [ZED vs MODEL] Heatmap Calculations
 		# error_map = utils.create_depth_error_heatmap(model_depth_rgb, zed_depth_rgb, zed_vs_model_dir, frame_id)
-		error_map_mono = utils.create_depth_error_heatmap(model_depth_mono, zed_depth_mono, zed_vs_model_dir, frame_id)
-		concat_error_depth = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono, error_map_mono])
+		depth_error_map_mono = utils.get_error_heatmap(model_depth_mono, zed_depth_mono)
+		depth_error_map_bgr = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
+		depth_eror_map_concat_mono = cv2.hconcat([left_img_mono, zed_depth_mono, model_depth_mono, depth_error_map_mono])
+		depth_error_map_concat_bgr = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, depth_error_map_bgr])
 		# concat_error_depth = cv2.hconcat([left_img_bgr, zed_depth_rgb, model_depth_rgb, error_map])
+		# concat_error_depth = cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono])
 
-		cv2.imshow("TEST", concat_error_depth)
+		cv2.imshow("TEST", cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))
+		cv2.imwrite(f"{zed_vs_model_heatmap_dir}/frame_{frame_id}.png",cv2.vconcat([depth_error_map_concat_bgr, depth_eror_map_concat_mono]))	
+		
+		
 		cv2.waitKey(0)
 		
-		if idx > 0:
+		if idx > 3:
 			break
 		
 	# cv2 cleanup

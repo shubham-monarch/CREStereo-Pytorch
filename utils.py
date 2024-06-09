@@ -8,7 +8,8 @@ def get_mono_depth(disp, baseline, focal_length, gpu_t):
 	assert(disp.ndim == 2)
 	depth_ = (baseline * focal_length) / (disp + 1e-6)
 	depth = cv2.resize(depth_, disp.shape[::-1], interpolation=cv2.INTER_LINEAR) * gpu_t	
-	depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+	depth_vis = cv2.normalize(depth, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+	# depth_vis = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
 	return depth_vis.astype("uint8")
 
 def get_rgb_depth(disp, baseline, focal_length, gpu_t):
@@ -50,22 +51,7 @@ def is_grayscale(image):
     return np.array_equal(image, grayscale_image_bgr)
 
 
-def create_depth_error_heatmap(model_depth_mono, zed_depth_mono, output_dir, frame_id):
-	# Calculate absolute difference
-	logging.debug(f"model_depth.ndims: {model_depth_mono.ndim} model_depth.dtype: {model_depth_mono.dtype}")
-	logging.debug(f"zed_depth.ndims: {zed_depth_mono.ndim} zed_depth.dtype: {zed_depth_mono.dtype}")
-	logging.debug(f"is_grayscale(model_depth_mono): {is_grayscale(model_depth_mono)} is_grayscale(zed_depth_mono): {is_grayscale(zed_depth_mono)}")
-	
-	depth_error = cv2.absdiff(model_depth_mono, zed_depth_mono)
-
-	# Normalize the error image to range 0-255
+def get_error_heatmap(model_depth_map, zed_depth_map):
+	depth_error = cv2.absdiff(model_depth_map, zed_depth_map)
 	depth_error = cv2.normalize(depth_error, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-
-	# Apply color map
-	# depth_error_heatmap = cv2.applyColorMap(depth_error, cv2.COLORMAP_JET)
-
-	return depth_error
-	#
-	# return depth_error_heatmap
-	# Save the heatmap
-	# cv2.imwrite(f"{output_dir}/error_heatmap_{frame_id}.png", depth_error_heatmap)
+	return depth_error	
