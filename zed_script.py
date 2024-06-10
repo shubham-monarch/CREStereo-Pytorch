@@ -24,16 +24,16 @@ ZED_INPUT_IMAGES_DIR = f"{ZED_INPUT_DIR}/images"
 
 
 # model output folders => output of the model pipeline
-MODEL_OUTPUT_DIR = "model_output"
+MODEL_OUTPUT_DIR = "outputs/model_output"
 MODEL_DEPTH_MAPS_DIR = f"{MODEL_OUTPUT_DIR}/depth_maps"
 
 # zed output folders => output of the zed pipeline
-ZED_OUTPUT_DIR = "zed_output"
+ZED_OUTPUT_DIR = "outputs/zed_output"
 ZED_DEPTH_MAPS_DIR = f"{ZED_OUTPUT_DIR}/depth_maps"
 
 
 # comparison folders
-ZED_VS_MODEL_DIR = "zed_vs_model"
+ZED_VS_MODEL_DIR = "outputs/zed_vs_model"
 IMG_ZED_MODEL_ERROR_DIR = f"{ZED_VS_MODEL_DIR}/img-zed-model-error"
 MEAN_VARIANCE_HIST_DIR = f"{ZED_VS_MODEL_DIR}/mean_variance_hist"
 ZED_VS_MODEL_HEATMAP_DIR = f"{ZED_VS_MODEL_DIR}/depth_error_heatmaps"
@@ -211,15 +211,16 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	plt.hist(variance_depth_errors, bins=200, color='red', edgecolor='black')
 	plt.title('Histogram of Variance Errors')
 	plt.savefig(f"{MEAN_VARIANCE_HIST_DIR}/mean_variance_hist.png")
-	# plt.show()
+	plt.close()
 
 
 if __name__ == '__main__':
 
-	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
-	logging.getLogger('matplotlib').setLevel(logging.WARNING)
+	# coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
+	# logging.getLogger('matplotlib').setLevel(logging.WARNING)
 	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
-	num_frames = 1
+	num_frames = 100
 	logging.info(f"Running ZED pipeline for {num_frames} frames.")
 	run_zed_pipeline(svo_file, num_frames)
 	

@@ -39,6 +39,7 @@ def write_legend_plot(depth_error_data, save_location):
 	cbar2 = fig.colorbar(cax2, ax=axs[1])
 	cbar2.set_label('Depth Error (Grayscale)')
 	plt.savefig(save_location)
+	plt.close(fig)
 
 
 def inf_filtering(depth_map):
