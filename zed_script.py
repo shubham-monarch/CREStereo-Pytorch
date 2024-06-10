@@ -19,57 +19,38 @@ BASELINE = 0.13
 FOCAL_LENGTH = 1093.5
 
 # zed input folders => input to the model pipeline
-zed_input_dir = "zed_input"
-zed_input_images_dir= f"{zed_input_dir}/images"
-# # zed_input_disp_maps = f"{zed_input_dir}/disparity_maps"
-# zed_input_depth_maps = f"{zed_input_dir}/depth_maps"
+ZED_INPUT_DIR = "zed_input"
+ZED_INPUT_IMAGES_DIR = f"{ZED_INPUT_DIR}/images"
 
 
 # model output folders => output of the model pipeline
-model_output_dir = "model_output"
-model_depth_maps_dir = f"{model_output_dir}/depth_maps"
+MODEL_OUTPUT_DIR = "model_output"
+MODEL_DEPTH_MAPS_DIR = f"{MODEL_OUTPUT_DIR}/depth_maps"
 
 # zed output folders => output of the zed pipeline
-zed_output_dir = "zed_output"
-zed_depth_maps_dir = f"{zed_output_dir}/depth_maps"
+ZED_OUTPUT_DIR = "zed_output"
+ZED_DEPTH_MAPS_DIR = f"{ZED_OUTPUT_DIR}/depth_maps"
 
 
 # comparison folders
-zed_vs_model_dir = "zed_vs_model"
-img_zed_model_error_dir = f"{zed_vs_model_dir}/img-zed-model-error"
-mean_variance_hist_dir = f"{zed_vs_model_dir}/mean_variance_hist"
-zed_vs_model_heatmap_dir = f"{zed_vs_model_dir}/depth_error_heatmaps"
-# zed_vs_model_depth_map = f"{zed_vs_model_dir}/depth_maps"
-# zed_vs_model_heatmap_dir = f"{zed_vs_model_dir}/depth_error_heatmaps"
-# zed_vs_model_disp_dir = f"{zed_vs_model_dir}/disparity"
-# zed_vs_model_depth_dir = f"{zed_vs_model_dir}/depth"
+ZED_VS_MODEL_DIR = "zed_vs_model"
+IMG_ZED_MODEL_ERROR_DIR = f"{ZED_VS_MODEL_DIR}/img-zed-model-error"
+MEAN_VARIANCE_HIST_DIR = f"{ZED_VS_MODEL_DIR}/mean_variance_hist"
+ZED_VS_MODEL_HEATMAP_DIR = f"{ZED_VS_MODEL_DIR}/depth_error_heatmaps"
 
 def run_zed_pipeline(svo_file, num_frames=5): 	
-	# logging.info(f"Running ZED pipeline for {num_frames} frames.")
-
-	# deleting the old files
-	for folder_path in [img_zed_model_error_dir, zed_input_images_dir,mean_variance_hist_dir,
-					 zed_vs_model_heatmap_dir, model_depth_maps_dir,zed_vs_model_heatmap_dir,
-					 model_depth_maps_dir, zed_depth_maps_dir]:
-		logging.debug(f"Deleting the old files in {folder_path}")
-		if os.path.exists(folder_path):
-			try: 
-				shutil.rmtree(folder_path)
-			except OSError:
-				logging.error(f"Error while deleting {folder_path}. Retrying...")
-				# time.sleep(1)  # wait for 1 second before retrying
-		else:
-			print(f"The folder {folder_path} does not exist.")
-	logging.info("Deleted the old files.")
 	
+	folders = [ZED_INPUT_IMAGES_DIR , # zed-pipeline inputs
+				IMG_ZED_MODEL_ERROR_DIR, MEAN_VARIANCE_HIST_DIR, ZED_VS_MODEL_HEATMAP_DIR, # zed-vs-model 
+				MODEL_DEPTH_MAPS_DIR, # model outputs
+				ZED_DEPTH_MAPS_DIR] # zed outputs
 
+	# deleting the old folders
+	utils.delete_folders(folders)
 	# creating the new folders
-	for path in [zed_vs_model_dir, img_zed_model_error_dir, zed_input_images_dir,mean_variance_hist_dir, 
-			  zed_vs_model_heatmap_dir,zed_depth_maps_dir,zed_vs_model_heatmap_dir,
-			  model_depth_maps_dir, zed_depth_maps_dir]:
-		os.makedirs(path, exist_ok=True)
-		logging.info(f"Created the {path} folder!")
-
+	utils.create_folders(folders)
+	
+	# ZED PROCESSING
 	input_type = sl.InputType()
 	input_type.set_from_svo_file(svo_file)
 	
@@ -80,9 +61,6 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	zed = sl.Camera()
 	status = zed.open(init_params)
 	
-	# logging.debug(f"Total number of frames in the svo file: {zed.get_svo_number_of_frames()}")
-	# logging.debug(f"Running the pipeline for {num_frames} frames.")
-
 	image_l = sl.Mat()
 	image_r = sl.Mat()
 	depth_map = sl.Mat()
@@ -110,11 +88,11 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			zed.set_svo_position(i)	
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
-			image_l.write( os.path.join(zed_input_images_dir, f'left_{i}.png') )
-			image_r.write( os.path.join(zed_input_images_dir, f'right_{i}.png') )
+			image_l.write( os.path.join(ZED_INPUT_IMAGES_DIR , f'left_{i}.png') )
+			image_r.write( os.path.join(ZED_INPUT_IMAGES_DIR , f'right_{i}.png') )
 
-			left_img_path = os.path.join(zed_input_images_dir, f"left_{i}.png")
-			right_img_path = os.path.join(zed_input_images_dir, f"right_{i}.png")
+			left_img_path = os.path.join(ZED_INPUT_IMAGES_DIR , f"left_{i}.png")
+			right_img_path = os.path.join(ZED_INPUT_IMAGES_DIR , f"right_{i}.png")
 			left_img = cv2.imread(left_img_path)	
 			right_img = cv2.imread(right_img_path)
 			
@@ -177,8 +155,8 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# filtering inf values 
 			model_depth_data_filtered = utils.inf_filtering(model_depth_data)
 			zed_depth_data_filtered = utils.inf_filtering(zed_depth_data)
-			utils.write_legend_plot(model_depth_data_filtered, f"{model_depth_maps_dir}/frame_{i}.png")
-			utils.write_legend_plot(zed_depth_data_filtered, f"{zed_depth_maps_dir}/frame_{i}.png")
+			utils.write_legend_plot(model_depth_data_filtered, f"{MODEL_DEPTH_MAPS_DIR}/frame_{i}.png")
+			utils.write_legend_plot(zed_depth_data_filtered, f"{ZED_DEPTH_MAPS_DIR}/frame_{i}.png")
 
 
 			depth_error_data = cv2.absdiff(model_depth_data_filtered, zed_depth_data_filtered)
@@ -192,7 +170,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# cbar2 = fig.colorbar(cax2, ax=axs[1])
 			# cbar2.set_label('Depth Error (Grayscale)')
 			# plt.savefig(f"{zed_vs_model_heatmap_dir}/frame_{i}.png")
-			utils.write_legend_plot(depth_error_data, f"{zed_vs_model_heatmap_dir}/frame_{i}.png")		
+			utils.write_legend_plot(depth_error_data, f"{ZED_VS_MODEL_HEATMAP_DIR}/frame_{i}.png")		
 
 
 			mean_depth_errors.append(np.mean(depth_error_data))
@@ -210,7 +188,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			
 			# cv2.imshow("TEST", concat_img_zed_model_error)
 			# cv2.waitKey()
-			cv2.imwrite(f"{img_zed_model_error_dir}/frame_{i}.png", concat_img_zed_model_error)
+			cv2.imwrite(f"{IMG_ZED_MODEL_ERROR_DIR}/frame_{i}.png", concat_img_zed_model_error)
 			
 			
 			# a = cv2.hconcat([model_depth_map_mono, zed_depth_map_mono, depth_error_map_mono])
@@ -231,7 +209,7 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	plt.subplot(1, 2, 2)
 	plt.hist(variance_depth_errors, bins=200, color='red', edgecolor='black')
 	plt.title('Histogram of Variance Errors')
-	plt.savefig(f"{mean_variance_hist_dir}/mean_variance_hist.png")
+	plt.savefig(f"{MEAN_VARIANCE_HIST_DIR}/mean_variance_hist.png")
 	# plt.show()
 
 

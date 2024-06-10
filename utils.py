@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import logging
 import matplotlib.pyplot as plt
+import os
+import shutil
 
 # TO-DO=>
 # - add histograms
@@ -29,14 +31,14 @@ def uint8_normalization(depth_map):
 	return depth_map_uint8
 
 def write_legend_plot(depth_error_data, save_location):
-    fig, axs = plt.subplots(1, 2, figsize=(20, 10))
-    cax1 = axs[0].imshow(depth_error_data, cmap='inferno')
-    cbar1 = fig.colorbar(cax1, ax=axs[0])
-    cbar1.set_label('Depth Error (Inferno)')
-    cax2 = axs[1].imshow(depth_error_data, cmap='gray')
-    cbar2 = fig.colorbar(cax2, ax=axs[1])
-    cbar2.set_label('Depth Error (Grayscale)')
-    plt.savefig(save_location)
+	fig, axs = plt.subplots(1, 2, figsize=(20, 10))
+	cax1 = axs[0].imshow(depth_error_data, cmap='inferno')
+	cbar1 = fig.colorbar(cax1, ax=axs[0])
+	cbar1.set_label('Depth Error (Inferno)')
+	cax2 = axs[1].imshow(depth_error_data, cmap='gray')
+	cbar2 = fig.colorbar(cax2, ax=axs[1])
+	cbar2.set_label('Depth Error (Grayscale)')
+	plt.savefig(save_location)
 
 
 def inf_filtering(depth_map):
@@ -65,3 +67,21 @@ def percentage_infinite_points(image):
 	percentage = (infinite_points / total_points) * 100
 	return percentage
 
+
+def delete_folders(folders):
+	for folder_path in folders:
+			logging.debug(f"Deleting the old files in {folder_path}")
+			if os.path.exists(folder_path):
+				try: 
+					shutil.rmtree(folder_path)
+				except OSError:
+					logging.error(f"Error while deleting {folder_path}. Retrying...")
+					# time.sleep(1)  # wait for 1 second before retrying
+			else:
+				print(f"The folder {folder_path} does not exist.")	
+	logging.info("Deleted the old files.")
+		
+def create_folders(folders):
+	for path in folders:
+		os.makedirs(path, exist_ok=True)
+		logging.info(f"Created the {path} folder!")
