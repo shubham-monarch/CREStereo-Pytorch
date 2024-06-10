@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 # - add histograms
 # - capitalize dir params
 # - jsonize config files
+# - fix git tracking issue
+
 
 
 
