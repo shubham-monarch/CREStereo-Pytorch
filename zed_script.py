@@ -38,17 +38,18 @@ IMG_ZED_MODEL_ERROR_DIR = f"{ZED_VS_MODEL_DIR}/img-zed-model-error"
 MEAN_VARIANCE_HIST_DIR = f"{ZED_VS_MODEL_DIR}/mean_variance_hist"
 ZED_VS_MODEL_HEATMAP_DIR = f"{ZED_VS_MODEL_DIR}/depth_error_heatmaps"
 
-def run_zed_pipeline(svo_file, num_frames=5): 	
-	
-	folders = [ZED_INPUT_IMAGES_DIR , # zed-pipeline inputs
+PIPELINE_FOLDERS = [ZED_INPUT_IMAGES_DIR , # zed-pipeline inputs
 				IMG_ZED_MODEL_ERROR_DIR, MEAN_VARIANCE_HIST_DIR, ZED_VS_MODEL_HEATMAP_DIR, # zed-vs-model 
 				MODEL_DEPTH_MAPS_DIR, # model outputs
 				ZED_DEPTH_MAPS_DIR] # zed outputs
 
+
+def run_zed_pipeline(svo_file, num_frames=5): 	
+		
 	# deleting the old folders
-	utils.delete_folders(folders)
+	utils.delete_folders(PIPELINE_FOLDERS)
 	# creating the new folders
-	utils.create_folders(folders)
+	utils.create_folders(PIPELINE_FOLDERS)
 	
 	# ZED PROCESSING
 	input_type = sl.InputType()
