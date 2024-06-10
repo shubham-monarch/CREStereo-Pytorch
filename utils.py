@@ -28,14 +28,17 @@ def uint8_normalization(depth_map):
 	depth_map_uint8 = cv2.normalize(depth_map_finite, depth_map_finite, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 	return depth_map_uint8
 
-def plot_histogram(image, title):
-	plt.hist(image, bins='auto')
-	plt.title(title)
-	# plt.draw()
-	# plt.waitforbuttonpress(0)
-	# plt.close('all')
-	plt.show() 
-	
+def write_legend_plot(depth_error_data, save_location):
+    fig, axs = plt.subplots(1, 2, figsize=(20, 10))
+    cax1 = axs[0].imshow(depth_error_data, cmap='inferno')
+    cbar1 = fig.colorbar(cax1, ax=axs[0])
+    cbar1.set_label('Depth Error (Inferno)')
+    cax2 = axs[1].imshow(depth_error_data, cmap='gray')
+    cbar2 = fig.colorbar(cax2, ax=axs[1])
+    cbar2.set_label('Depth Error (Grayscale)')
+    plt.savefig(save_location)
+
+
 def inf_filtering(depth_map):
 	max_depth = np.max(depth_map[np.isfinite(depth_map)])
 	depth_map_finite = np.where(np.isinf(depth_map), max_depth, depth_map)

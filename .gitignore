@@ -8,6 +8,7 @@ zed-depth-map/*
 .fuse_hidden*
 
 zed_vs_model/*
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

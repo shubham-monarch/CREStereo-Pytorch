@@ -20,14 +20,25 @@ FOCAL_LENGTH = 1093.5
 
 # zed input folders => input to the model pipeline
 zed_input_dir = "zed_input"
-zed_input_images= f"{zed_input_dir}/images"
+zed_input_images_dir= f"{zed_input_dir}/images"
 # # zed_input_disp_maps = f"{zed_input_dir}/disparity_maps"
 # zed_input_depth_maps = f"{zed_input_dir}/depth_maps"
+
+
+# model output folders => output of the model pipeline
+model_output_dir = "model_output"
+model_depth_maps_dir = f"{model_output_dir}/depth_maps"
+
+# zed output folders => output of the zed pipeline
+zed_output_dir = "zed_output"
+zed_depth_maps_dir = f"{zed_output_dir}/depth_maps"
+
 
 # comparison folders
 zed_vs_model_dir = "zed_vs_model"
 img_zed_model_error_dir = f"{zed_vs_model_dir}/img-zed-model-error"
 mean_variance_hist_dir = f"{zed_vs_model_dir}/mean_variance_hist"
+zed_vs_model_heatmap_dir = f"{zed_vs_model_dir}/depth_error_heatmaps"
 # zed_vs_model_depth_map = f"{zed_vs_model_dir}/depth_maps"
 # zed_vs_model_heatmap_dir = f"{zed_vs_model_dir}/depth_error_heatmaps"
 # zed_vs_model_disp_dir = f"{zed_vs_model_dir}/disparity"
@@ -35,9 +46,11 @@ mean_variance_hist_dir = f"{zed_vs_model_dir}/mean_variance_hist"
 
 def run_zed_pipeline(svo_file, num_frames=5): 	
 	# logging.info(f"Running ZED pipeline for {num_frames} frames.")
-	
+
 	# deleting the old files
-	for folder_path in [zed_vs_model_dir, img_zed_model_error_dir, zed_input_images,mean_variance_hist_dir]:
+	for folder_path in [img_zed_model_error_dir, zed_input_images_dir,mean_variance_hist_dir,
+					 zed_vs_model_heatmap_dir, model_depth_maps_dir,zed_vs_model_heatmap_dir,
+					 model_depth_maps_dir, zed_depth_maps_dir]:
 		logging.debug(f"Deleting the old files in {folder_path}")
 		if os.path.exists(folder_path):
 			try: 
@@ -51,7 +64,9 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	
 
 	# creating the new folders
-	for path in [zed_vs_model_dir, img_zed_model_error_dir, zed_input_images,mean_variance_hist_dir]:
+	for path in [zed_vs_model_dir, img_zed_model_error_dir, zed_input_images_dir,mean_variance_hist_dir, 
+			  zed_vs_model_heatmap_dir,zed_depth_maps_dir,zed_vs_model_heatmap_dir,
+			  model_depth_maps_dir, zed_depth_maps_dir]:
 		os.makedirs(path, exist_ok=True)
 		logging.info(f"Created the {path} folder!")
 
@@ -95,11 +110,11 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			zed.set_svo_position(i)	
 			zed.retrieve_image(image_l, sl.VIEW.LEFT) # Retrieve left image
 			zed.retrieve_image(image_r, sl.VIEW.RIGHT) # Retrieve left image
-			image_l.write( os.path.join(zed_input_images, f'left_{i}.png') )
-			image_r.write( os.path.join(zed_input_images, f'right_{i}.png') )
+			image_l.write( os.path.join(zed_input_images_dir, f'left_{i}.png') )
+			image_r.write( os.path.join(zed_input_images_dir, f'right_{i}.png') )
 
-			left_img_path = os.path.join(zed_input_images, f"left_{i}.png")
-			right_img_path = os.path.join(zed_input_images, f"right_{i}.png")
+			left_img_path = os.path.join(zed_input_images_dir, f"left_{i}.png")
+			right_img_path = os.path.join(zed_input_images_dir, f"right_{i}.png")
 			left_img = cv2.imread(left_img_path)	
 			right_img = cv2.imread(right_img_path)
 			
@@ -162,8 +177,24 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			# filtering inf values 
 			model_depth_data_filtered = utils.inf_filtering(model_depth_data)
 			zed_depth_data_filtered = utils.inf_filtering(zed_depth_data)
+			utils.write_legend_plot(model_depth_data_filtered, f"{model_depth_maps_dir}/frame_{i}.png")
+			utils.write_legend_plot(zed_depth_data_filtered, f"{zed_depth_maps_dir}/frame_{i}.png")
+
 
 			depth_error_data = cv2.absdiff(model_depth_data_filtered, zed_depth_data_filtered)
+			
+			# addding legend for the depth_error_data and saving 
+			# fig, axs = plt.subplots(1, 2, figsize=(20, 10))
+			# cax1 = axs[0].imshow(depth_error_data, cmap='inferno')
+			# cbar1 = fig.colorbar(cax1, ax=axs[0])
+			# cbar1.set_label('Depth Error (Inferno)')
+			# cax2 = axs[1].imshow(depth_error_data, cmap='gray')
+			# cbar2 = fig.colorbar(cax2, ax=axs[1])
+			# cbar2.set_label('Depth Error (Grayscale)')
+			# plt.savefig(f"{zed_vs_model_heatmap_dir}/frame_{i}.png")
+			utils.write_legend_plot(depth_error_data, f"{zed_vs_model_heatmap_dir}/frame_{i}.png")		
+
+
 			mean_depth_errors.append(np.mean(depth_error_data))
 			variance_depth_errors.append(np.var(depth_error_data))
 
@@ -173,8 +204,8 @@ def run_zed_pipeline(svo_file, num_frames=5):
 			depth_error_map_rgb = cv2.applyColorMap(depth_error_map_mono, cv2.COLORMAP_INFERNO)
 
 			# [ZED vs MODEL] writing [img  +  zed_depth +  model_depth + depth_error] to disk
-			concat_img_zed_model_error_mono = cv2.hconcat([imgL, zed_depth_map_mono, model_depth_map_mono, depth_error_map_mono])
-			concat_img_zed_model_error_rgb = cv2.hconcat([imgL_mono, zed_depth_map_rgb, model_depth_map_rgb, depth_error_map_rgb])
+			concat_img_zed_model_error_mono = cv2.hconcat([imgL_mono, zed_depth_map_mono, model_depth_map_mono, depth_error_map_mono])
+			concat_img_zed_model_error_rgb = cv2.hconcat([imgL, zed_depth_map_rgb, model_depth_map_rgb, depth_error_map_rgb])
 			concat_img_zed_model_error = cv2.vconcat([concat_img_zed_model_error_mono, concat_img_zed_model_error_rgb])
 			
 			# cv2.imshow("TEST", concat_img_zed_model_error)
@@ -201,14 +232,15 @@ def run_zed_pipeline(svo_file, num_frames=5):
 	plt.hist(variance_depth_errors, bins=200, color='red', edgecolor='black')
 	plt.title('Histogram of Variance Errors')
 	plt.savefig(f"{mean_variance_hist_dir}/mean_variance_hist.png")
-	plt.show()
+	# plt.show()
 
 
 if __name__ == '__main__':
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	logging.getLogger('matplotlib').setLevel(logging.WARNING)
 	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
-	num_frames = 100
+	num_frames = 1
 	logging.info(f"Running ZED pipeline for {num_frames} frames.")
 	run_zed_pipeline(svo_file, num_frames)
 	
