@@ -162,15 +162,6 @@ def run_zed_pipeline(svo_file, num_frames=5):
 
 			depth_error_data = cv2.absdiff(model_depth_data_filtered, zed_depth_data_filtered)
 			
-			# addding legend for the depth_error_data and saving 
-			# fig, axs = plt.subplots(1, 2, figsize=(20, 10))
-			# cax1 = axs[0].imshow(depth_error_data, cmap='inferno')
-			# cbar1 = fig.colorbar(cax1, ax=axs[0])
-			# cbar1.set_label('Depth Error (Inferno)')
-			# cax2 = axs[1].imshow(depth_error_data, cmap='gray')
-			# cbar2 = fig.colorbar(cax2, ax=axs[1])
-			# cbar2.set_label('Depth Error (Grayscale)')
-			# plt.savefig(f"{zed_vs_model_heatmap_dir}/frame_{i}.png")
 			utils.write_legend_plot(depth_error_data, f"{ZED_VS_MODEL_HEATMAP_DIR}/frame_{i}.png")		
 
 

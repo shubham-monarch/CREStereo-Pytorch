@@ -1,8 +1,11 @@
+#! /usr/bin/env python3
+
 import torch
 import torch.nn.functional as F
 import numpy as np
 import cv2
 from imread_from_url import imread_from_url
+import onxxruntime as rt
 
 from nets import Model
 
@@ -43,7 +46,6 @@ if __name__ == '__main__':
 	                  do_constant_folding=True,  # whether to execute constant folding for optimization
 	                  input_names = ['left', 'right'],   # the model's input names
 	                  output_names = ['output'])
-
 
 
 

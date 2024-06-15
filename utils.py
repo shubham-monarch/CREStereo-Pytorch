@@ -8,12 +8,8 @@ import os
 import shutil
 
 # TO-DO=>
-# - add histograms
-# - capitalize dir params
 # - jsonize config files
 # - fix git tracking issue
-
-
 
 
 # input -> np.float32 disp_data
