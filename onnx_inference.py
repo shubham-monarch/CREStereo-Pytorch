@@ -6,12 +6,24 @@ import coloredlogs, logging
 import matplotlib.pyplot as plt
 import cv2
 import utils
+import os
+import random
+import re
+import time
 
 # TO-DO -> 
 # - use np.squeeze()
 # - calculate frame rate
 
 
+def sort_key(filename):
+	# Extract the prefix and index from the filename
+	match = re.match(r'(left|right)_(\d+)\.png', filename)
+	if match:
+		prefix, index = match.groups()
+		return int(index), 0 if prefix == 'left' else 1
+	else:
+		return float('inf'), ''
 
 
 def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
@@ -68,6 +80,8 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 DIMS = (480, 640)
 H,W = DIMS
 
+ZED_IMAGE_DIR = "zed_input/images"
+
 if __name__ == "__main__": 
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
@@ -75,33 +89,80 @@ if __name__ == "__main__":
 	# setting up cv2 window
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("TEST", 2 * W, H)
-
-	# Load the ONNX models
+	# load the onnx models
 	sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
 	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
+
+	# logging.warning(os.listdir(ZED_IMAGE_DIR))
+
+	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
+	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
 	
-	# Load and preprocess your images
-	left_img = cv2.imread('zed_input/images/left_20.png')
-	right_img = cv2.imread('zed_input/images/right_20.png')
-
-	left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-	right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-
-	model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
-	logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
-	model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
-	logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
-	model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
+	image_files_left.sort()
+	image_files_right.sort()
 
 
-	# visualizing the results
-	cv2.imshow("TEST", left)
-	cv2.waitKey(0)
-	cv2.imshow("TEST", model_infereence_depth_map_unit8)
-	cv2.waitKey(0)
-	cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
-	cv2.waitKey(0)
+	logging.warn(f"image_files_left: {image_files_left[:5]}")
+	logging.warn(f"image_files_right: {image_files_right[:5]}")
+	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
+	
+	frame_rates = []
+	
+	num_images = len(image_files_left)
+	for i in range(0, min(num_images, 10)):
+		rand_idx = random.randint(0, num_images - 1)
+		
+		left_img = cv2.imread(image_files_left[rand_idx])
+		right_img = cv2.imread(image_files_right[rand_idx])
+		
+		# right_img = cv2.imread(image_files[rand_idx // 2 + 1])
+		
+		# logging.warning(f"left_img: {left_img}"
 
+		left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
+
+		start_time = time.time()
+		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
+		logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
+		model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
+		logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
+		model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
+
+
+		# visualizing the results
+		# cv2.imshow("TEST", left)
+		# cv2.waitKey(0)
+		# cv2.imshow("TEST", model_infereence_depth_map_unit8)
+		# cv2.waitKey(0)
+		cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
+		cv2.waitKey(0)
+
+		
+
+	
+	# # Load and preprocess your images
+	# # for image in image_files:
+	# # 	# left_img = cv2.imread('zed_input/images/left_20.png')
+	# # 	# right_img = cv2.imread('zed_input/images/right_20.png')
+
+	# # 	left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
+	# 	right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
+
+	# 	model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
+	# 	logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
+	# 	model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
+	# 	logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
+	# 	model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
+
+
+	# 	# visualizing the results
+	# 	cv2.imshow("TEST", left)
+	# 	cv2.waitKey(0)
+	# 	cv2.imshow("TEST", model_infereence_depth_map_unit8)
+	# 	cv2.waitKey(0)
+	# 	cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
+	# 	cv2.waitKey(0)
 
 	cv2.destroyAllWindows()
 
