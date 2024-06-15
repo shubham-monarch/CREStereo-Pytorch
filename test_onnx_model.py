@@ -1,7 +1,6 @@
-#! /usr/bin/env python3
-
 import numpy as np
 import cv2
+
 import onnxruntime
 
 # Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
@@ -42,12 +41,8 @@ def inference(left, right, model, no_flow_model):
 
 if __name__ == '__main__':
 
-    # left_img = cv2.imread("left.png")
-    # right_img = cv2.imread("right.png")
-
-    left_img = cv2.imread('zed_input/images/left_20.png')
-    right_img = cv2.imread('zed_input/images/right_20.png')
-
+    left_img = cv2.imread("left.png")
+    right_img = cv2.imread("right.png")
 
     in_h, in_w = left_img.shape[:2]
 
