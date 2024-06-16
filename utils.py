@@ -6,11 +6,35 @@ import logging
 import matplotlib.pyplot as plt
 import os
 import shutil
+import time
 
 # TO-DO=>
 # - jsonize config files
 # - fix git tracking issue
 
+
+class FPS:
+    def __init__(self):
+        self.accum_time = 0
+        self.curr_fps = 0
+        self.fps = "FPS: ??"
+
+    def start(self):
+        self.prev_time = time.time()
+
+    def stop(self):
+        self.curr_time = time.time()
+        exec_time = self.curr_time - self.prev_time
+        self.prev_time = self.curr_time
+        self.accum_time += exec_time
+
+    def get_fps(self):
+        self.curr_fps += 1
+        if self.accum_time > 1:
+            self.accum_time -= 1
+            self.fps = "FPS: " + str(self.curr_fps)
+            self.curr_fps = 0
+        return self.fps
 
 # input -> np.float32 disp_data
 def get_depth_data(disp_data, baseline, focal_length): 
