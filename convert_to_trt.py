@@ -6,17 +6,20 @@ import onnx
 import onnx_tensorrt.backend as backend
 import numpy as np
 import cv2
-import pycuda.driver as cuda
+# ssimport pycuda.driver as cuda
 
 
 # TO-DO
 # - check tensort version compatibility
+# - using polygraphy for quick onnx model checking
 # - refer official nvidia docs for best practices
 # - explore onnx-graphsurgeon and polygraphy 
 # - checck pip install trt-cu11
 # - tinker with cudnn version 
 # - change cuda version to 12.1 
 # - read onnxsim => removes unsupported operations -> both python / cli apis
+# - how to specify precision
+# - intergrate onnxsimp api to code
 
 
 # (H, W)
@@ -51,9 +54,12 @@ def build_engine(onnx_file_path):
 
 	
 def main():
-	engine = build_engine("models/crestereo.onnx")
+	# engine = build_engine("models/crestereo_without_flow.onnx")
+	engine = build_engine("models/crestereo_without_flow_simp.onnx")
 	# engine = build_engine("models/crestereo_dynamic.onnx")	
 	# serialize_engine_to_file(engine, args.savepth)
+
+
 
 if __name__ == '__main__':
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger

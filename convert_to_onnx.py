@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import cv2
 from imread_from_url import imread_from_url
-import onxxruntime as rt
+import onnxruntime as rt
 
 from nets import Model
 
