@@ -3,8 +3,10 @@
 import time
 import pycuda.driver as cuda 
 import tensorrt as trt
+import os
+import coloredlogs, logging
 
-
+from tensorrt import TensorIOMode
 
 
 class HostDeviceMem(object):
@@ -41,24 +43,35 @@ class FPS:
             self.curr_fps = 0
         return self.fps
 
+
+
+
 def allocate_buffers(engine):
     inputs = []
     outputs = []
     bindings = []
     stream = cuda.Stream()
-    for binding in engine:
-        size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
-        dtype = trt.nptype(engine.get_binding_dtype(binding))
-        # Allocate host and device buffers
-        host_mem = cuda.pagelocked_empty(size, dtype)
-        device_mem = cuda.mem_alloc(host_mem.nbytes)
-        # Append the device buffer to device bindings.
-        bindings.append(int(device_mem))
-        # Append to the appropriate list.
-        if engine.binding_is_input(binding):
-            inputs.append(HostDeviceMem(host_mem, device_mem))
-        else:
-            outputs.append(HostDeviceMem(host_mem, device_mem))
+    with engine.create_execution_context() as context:
+        for binding in engine:
+            size = trt.volume(engine.get_tensor_shape(binding))
+            # size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
+            # dtype = trt.nptype(engine.get_binding_dtype(binding))
+            dtype = trt.nptype(engine.get_tensor_dtype(binding))
+            # logging.debug(f"dtype: {dtype}")
+            # Allocate host and device buffers
+            host_mem = cuda.pagelocked_empty(size, dtype)
+            device_mem = cuda.mem_alloc(host_mem.nbytes)
+            # Append the device buffer to device bindings.
+            bindings.append(int(device_mem))
+            # Append to the appropriate list.
+            # if engine.binding_is_input(binding):
+            #     inputs.append(HostDeviceMem(host_mem, device_mem))
+            # else:
+            #     outputs.append(HostDeviceMem(host_mem, device_mem))
+            if engine.get_tensor_mode(binding) == TensorIOMode.INPUT:
+                inputs.append(HostDeviceMem(host_mem, device_mem)) 
+            else: 
+                outputs.append(HostDeviceMem(host_mem, device_mem))
     return inputs, outputs, bindings, stream
 
     # self.inputs, self.outputs, self.bindings = [], [], []
