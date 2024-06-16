@@ -15,6 +15,8 @@ from tqdm import tqdm
 # TO-DO -> 
 # - calculate frame rate -> pytorch vs onnx vs tensorrt
 # - using gpu for inference in pytorch / onnx / tensorrt
+# - move data to gpu before inference
+# - role of batch_size while exporting the onnx model
 
 # (H, W)
 DIMS = (480, 640)
