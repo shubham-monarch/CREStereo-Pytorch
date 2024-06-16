@@ -13,69 +13,8 @@ import time
 from tqdm import tqdm
 
 # TO-DO -> 
-# - use np.squeeze()
-# - calculate frame rate
-
-
-def sort_key(filename):
-	# Extract the prefix and index from the filename
-	match = re.match(r'(left|right)_(\d+)\.png', filename)
-	if match:
-		prefix, index = match.groups()
-		return int(index), 0 if prefix == 'left' else 1
-	else:
-		return float('inf'), ''
-
-
-def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
-	
-	(h,w) = img_dims
-	
-	# Get onnx model layer names (see convert_to_onnx.py for what these are)
-	input1_name = model.get_inputs()[0].name
-	input2_name = model.get_inputs()[1].name
-	input3_name = model.get_inputs()[2].name
-	output_name = model.get_outputs()[0].name
-
-	
-	# Transpose the dimensions and add a batch dimension
-	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
-	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
-	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-
-	# logging.warn(f"imgL.shape: {imgL.shape} imgR.shape: {imgR.shape}")
-
-	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
-	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
-	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-
-	# # Perform inference with the first model
-	# pred_flow_dw2 = sess_cstrereo_without_flow.run(None, {'left': imgL_dw2, 'right': imgR_dw2})
-	# input_names_without_flow = [input.name for input in sess_cstrereo_without_flow.get_inputs()]
-	# input_feed_without_flow = {name: value for name, value in zip(input_names_without_flow, [imgL_dw2, imgR_dw2])}
-	
-	# without flow model inference
-	# pred_flow_dw2 = sess_cstrereo_without_flow.run(None, input_feed_without_flow)
-	# First pass it just to get the flow
-	pred_flow_dw2 = model_no_flow.run(
-		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
-	# Second pass gets us the disparity
-	pred_disp = model.run([output_name], {
-						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
-
-	return np.squeeze(pred_disp[:, 0, :, :])
-
-
-	# input_names_with_flow = [input.name for input in sess_crestereo.get_inputs()]
-	# input_feed_with_flow = {name: value for name, value in zip(input_names_with_flow, [imgL, imgR, pred_flow_dw2[0]])}    
-	
-	# logging.debug(f"input_names_with_flow: {input_names_with_flow}")
-	# # pred_flow = sess_crestereo.run(None, input_feed)
-
-	# pred_flow = sess_crestereo.run(None, input_feed_with_flow)    
-
+# - calculate frame rate -> pytorch vs onnx vs tensorrt
+# - using gpu for inference in pytorch / onnx / tensorrt
 
 # (H, W)
 DIMS = (480, 640)
@@ -83,13 +22,41 @@ H,W = DIMS
 ZED_IMAGE_DIR = "zed_input/images"
 
 
+def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):	
+	(h,w) = img_dims
 	
+	# Get onnx model layer names (see convert_to_onnx.py for what these are)
+	input1_name = model.get_inputs()[0].name
+	input2_name = model.get_inputs()[1].name
+	input3_name = model.get_inputs()[2].name
+	output_name = model.get_outputs()[0].name
+	
+	# Transpose the dimensions and add a batch dimension
+	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+
+	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
+	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	
+	pred_flow_dw2 = model_no_flow.run(
+		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
+	pred_disp = model.run([output_name], {
+						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
+	return np.squeeze(pred_disp[:, 0, :, :])
+
 def main(num_frames):
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("TEST", 2 * W, H)
 
-	sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
-	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
+	# sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
+	# sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
+	
+	sess_crestereo = ort.InferenceSession('models/crestereo_dynamic.onnx')
+	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow_dynamic.onnx')
 
 	# logging.warning(os.listdir(ZED_IMAGE_DIR))
 
