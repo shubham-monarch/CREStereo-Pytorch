@@ -26,7 +26,6 @@ import matplotlib.pyplot as plt
 # - read onnxsim => removes unsupported operations -> both python / cli apis
 # - how to specify precision
 # - intergrate onnxsimp api to code
-# - add engine serialization and deserialization 
 # - explore FPS() class -> YOLO -> https://github.com/sithu31296/PyTorch-ONNX-TRT/blob/master/examples/yolov4/yolov4/scripts/infer.py
 # - package structure from YOLO 
 # - add trt_info functions -> https://github.com/NVIDIA/TensorRT/tree/main/tools/experimental/trt-engine-explorer#workflow
@@ -41,6 +40,7 @@ import matplotlib.pyplot as plt
 # - add cuda loading in .ppth to .onnx conversion script
 # - reload output to torch for further processing
 # - fix negative values in flow_init
+# - improve output normalization
 
 # (H, W)
 DIMS = (480, 640)
@@ -238,6 +238,7 @@ def main():
 	# utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
 	plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
 	output_uint8 = utils.uint8_normalization(output_outlier_filtered)
+	output_uint8 = np.where(output_uint8 != 0, output_uint8, np.nan)
 	logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
 
 	plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
