@@ -58,42 +58,14 @@ runtime = trt.Runtime(TRT_LOGGER)
 # 	return [out.host for out in outputs]
 
 def load_engine(model_path: str):
-    if os.path.exists(model_path) and model_path.endswith('trt'):
-        print(f"Reading engine from file {model_path}")
-        with open(model_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
-            return runtime.deserialize_cuda_engine(f.read())
-    else:
-        print(f"FILE: {model_path} not found or extension not supported.")
+	if os.path.exists(model_path) and model_path.endswith('trt'):
+		print(f"Reading engine from file {model_path}")
+		with open(model_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
+			return runtime.deserialize_cuda_engine(f.read())
+	else:
+		print(f"FILE: {model_path} not found or extension not supported.")
 
 
-
-def allocate_buffers(engine):
-    inputs = []
-    outputs = []
-    bindings = []
-    stream = cuda.Stream()
-    with engine.create_execution_context() as context:
-        for binding in engine:
-            size = trt.volume(engine.get_tensor_shape(binding))
-            # size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
-            # dtype = trt.nptype(engine.get_binding_dtype(binding))
-            dtype = trt.nptype(engine.get_tensor_dtype(binding))
-            # logging.debug(f"dtype: {dtype}")
-            # Allocate host and device buffers
-            host_mem = cuda.pagelocked_empty(size, dtype)
-            device_mem = cuda.mem_alloc(host_mem.nbytes)
-            # Append the device buffer to device bindings.
-            bindings.append(int(device_mem))
-            # Append to the appropriate list.
-            # if engine.binding_is_input(binding):
-            #     inputs.append(HostDeviceMem(host_mem, device_mem))
-            # else:
-            #     outputs.append(HostDeviceMem(host_mem, device_mem))
-            if engine.get_tensor_mode(binding) == TensorIOMode.INPUT:
-                inputs.append(HostDeviceMem(host_mem, device_mem)) 
-            else: 
-                outputs.append(HostDeviceMem(host_mem, device_mem))
-    return inputs, outputs, bindings, stream
 
 
 def generate_engine_from_onnx(onnx_file_path: str):
@@ -120,21 +92,44 @@ def generate_engine_from_onnx(onnx_file_path: str):
 
 		return engine
 
-
-
+def do_inference_v2(context, bindings, inputs, outputs, stream):
+    # Transfer input data to the GPU.
+    [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
+    # Run inference.
+    context.execute_async_v3(stream.handle)
+    # Transfer predictions back from the GPU.
+    [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
+    # Synchronize the stream
+    stream.synchronize()
+    # Return only the host outputs.
+    return [out.host for out in outputs]
+	
 
 def main():
 	# engine = build_engine("models/crestereo_without_flow.onnx")
 	logging.debug(f"TensortRT version: {trt.__version__}")
+	# onnx_model = "models/crestereo_without_flow.onnx"
+	# onnx_model = "models/crestereo_without_flow_simp.onnx"
 	onnx_model = "models/crestereo.onnx"
 	# engine = generate_engine_from_onnx(onnx_model)
-	
+	trt.init_libnvinfer_plugins(None, "")
 	engine = load_engine("models/crestereo.trt")
 	
-	trt_utils.allocate_buffers(engine)
+	# trt_utils.allocate_buffers(engine)
 	# context = engine.create_execution_context()
 	# inputs, outputs, bindings, stream = trt_utils.allocate_buffers(engine)
 	
+	# logging.debug(f"type(inputs[0]): {type(inputs[0])}")
+	# # logging.debug(f"dir(inputs[0]): {dir(inputs[0])}")
+	# logging.debug(f"inputs[0].host: {inputs[0].host} inputs[0].device: {inputs[0].device}")
+	# logging.debug(f"type(outputs): {type(outputs)}")
+	# logging.debug(f"type(bindings): {type(bindings)}")
+	# logging.debug(f"type(stream): {type(stream)}")
+
+	# # do_inference_v2(context, inputs, outputs, bindings, stream, batch_size=1)
+	# do_inference_v2(context, inputs, outputs, bindings, stream)
+
+
 	# # load the inputs
 	# # Assuming left_img and right_img are your input images
 	# left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")

@@ -43,9 +43,6 @@ class FPS:
             self.curr_fps = 0
         return self.fps
 
-
-
-
 def allocate_buffers(engine):
     inputs = []
     outputs = []
