@@ -28,12 +28,14 @@ import utils
 # - explore FPS() class -> YOLO -> https://github.com/sithu31296/PyTorch-ONNX-TRT/blob/master/examples/yolov4/yolov4/scripts/infer.py
 # - package structure from YOLO 
 # - add trt_info functions -> https://github.com/NVIDIA/TensorRT/tree/main/tools/experimental/trt-engine-explorer#workflow
-# - add more attributes to the engine configuration
+# - add more attributes to the engine configuration -> optimization profile, f16, explore config.set_flag()
 # - add pre / post processing
 # - add trt engine class
 # - make onxx_without_flow work without onnx-simplifier
 # - addded batch_inference
 # - refactor code based on official nvidia examples
+# - to use ravel
+# - upgrade HostDeviceMem class -> https://github.com/NVIDIA/TensorRT/blob/main/samples/python/common_runtime.py
 
 
 # (H, W)
@@ -49,7 +51,9 @@ runtime = trt.Runtime(TRT_LOGGER)
 class TRTEngine:
 
 	def __init__(self, engine_path):
-		self.logger = trt.logger(trt.Logger.INFO)
+		# self.logger = trt.logger(trt.Logger.INFO)
+		self.logger = trt.Logger(trt.Logger.INFO)
+
 		trt.init_libnvinfer_plugins(self.logger, namespace="")
 
 		with open(engine_path, "rb") as f, trt.Runtime(self.logger) as runtime:
@@ -59,6 +63,28 @@ class TRTEngine:
 		self.context = self.engine.create_execution_context()
 		assert self.context
 
+	def allocate_buffers(self):
+		self.inputs = []
+		self.outputs = []
+		self.bindings = []
+		self.stream = cuda.Stream()
+
+		with self.engine.create_execution_context() as context:
+			for binding in self.engine:
+				size = trt.volume(self.engine.get_binding_shape(binding))
+				dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+				logging.debug(f"{binding}.shape: {size} dtype: {dtype}")
+				# logging.debug(f"shape: {self.engine.get_binding_shape(binding)}")
+				host_mem = cuda.pagelocked_empty(size, dtype)
+				device_mem = cuda.mem_alloc(host_mem.nbytes)
+				# Append the device buffer to device bindings.
+				self.bindings.append(int(device_mem))
+				# Append to the appropriate list.
+				if self.engine.binding_is_input(binding):
+					self.inputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))
+				else:
+					self.outputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))		
+		
 
 
 def load_engine(model_path: str):
@@ -72,30 +98,6 @@ def load_engine(model_path: str):
 
 
 
-def generate_engine_from_onnx(onnx_file_path: str):
-	with trt.Builder(TRT_LOGGER) as builder, builder.create_network(EXPLICIT_BATCH) as network, trt.OnnxParser(network, TRT_LOGGER) as parser:
-		config = builder.create_builder_config()
-		config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
-		with open(onnx_file_path, 'rb') as model:
-			if not parser.parse(model.read()):
-				print ('ERROR: Failed to parse the ONNX file.')
-				for error in range(parser.num_errors):
-					print (parser.get_error(error))
-				return None
-
-		serialized_engine = builder.build_serialized_network(network, config)
-
-		logging.error(f"serialized_engine_is_null: {serialized_engine is None}")
-		logging.error(f"config is null: {config is None}")
-		logging.error(f"network is null: {network is None}")
-
-		engine = runtime.deserialize_cuda_engine(serialized_engine)
-		
-		engine_file_path = onnx_file_path.replace(".onnx", ".trt")
-		with open(engine_file_path, "wb") as f:
-			f.write(engine.serialize())
-
-		return engine
 
 def do_inference_v2(context, bindings, inputs, outputs, stream):
 	# Transfer input data to the GPU.
@@ -116,25 +118,18 @@ def main():
 	# onnx_model = "models/crestereo_without_flow.onnx"
 	# onnx_model = "models/crestereo_without_flow_simp.onnx"
 	onnx_model = "models/crestereo.onnx"
+	trt_engine = "models/crestereo.trt"
 	# engine = generate_engine_from_onnx(onnx_model)
-	trt.init_libnvinfer_plugins(None, "")
-	engine = load_engine("models/crestereo.trt")
+	# trt.init_libnvinfer_plugins(None, "")
+	# engine = load_engine("models/crestereo.trt")
 	
-	# trt_utils.allocate_buffers(engine)
-	context = engine.create_execution_context()
-	inputs, outputs, bindings, stream = trt_utils.allocate_buffers(engine)
-	
-	# logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
-	
-	# for output in outputs:
-	# 	logging.debug(f"output.host.shape: {output.host.shape} output.device.shape: {output.device.shape}")
-	# # inferencing
-	
+	trt_engine = TRTEngine(trt_engine)
+	trt_engine.allocate_buffers()
 
 	# logging.debug(f"type(inputs[0]): {type(inputs[0])}")
 	# # logging.debug(f"dir(inputs[0]): {dir(inputs[0])}")
 	# logging.debug(f"inputs[0].host: {inputs[0].host} inputs[0].device: {inputs[0].device}")
-	logging.debug(f"len(inputs): {len(inputs)}")
+	# logging.debug(f"len(inputs): {len(inputs)}")
 	# logging.debug(f"type(outputs): {type(outputs)}")
 	# logging.debug(f"type(bindings): {type(bindings)}")
 	# logging.debug(f"type(stream): {type(stream)}")
@@ -162,23 +157,25 @@ def main():
 	
 	flow_init = np.ascontiguousarray(flow_init)
 	
-	inputs[0].host = imgL_dw2
-	inputs[1].host = imgR_dw2
-	inputs[2].host = flow_init
+	# inputs[0].host = imgL_dw2
+	# inputs[1].host = imgR_dw2
+	# inputs[2].host = flow_init
 
-	trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[0]
-	logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
-	logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")
-	logging.debug(f"type(trt_outputs): {type(trt_outputs)}")
-	# logging.debug(f"trt_outputs: {trt_outputs.shape}")
+	# trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[0]
+	# logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
+	# logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")
+	# logging.debug(f"type(trt_outputs): {type(trt_outputs)}")
+	# # logging.debug(f"trt_outputs: {trt_outputs.shape}")
 
-	output = trt_outputs.reshape((1, 2, h, w))
-	logging.debug(f"output.shape: {output.shape}")
-	output_ = np.squeeze(output[:, 0, :, :])
+	# # output = trt_outputs.reshape((1, 2, h, w))
+	# output = trt_outputs.reshape((1, w, h, 2))
+	# logging.debug(f"output.shape: {output.shape}")
+	# # output_ = np.squeeze(output[:, 0, :, :])
+	# output_ = np.squeeze(output[:, :, :, 0])
 
-	output_uint8 = utils.uint8_normalization(output_)
-	cv2.imshow("output", output_uint8)
-	cv2.waitKey(0)
+	# output_uint8 = utils.uint8_normalization(output_)
+	# cv2.imshow("output", output_uint8)
+	# cv2.waitKey(0)
 
 	# output_ = np.squeeze(trt_outputs[:, 0, :, :])
 	# logging.debug(f"output_.shape: {output_.shape}")

@@ -43,36 +43,32 @@ class FPS:
             self.curr_fps = 0
         return self.fps
 
-def allocate_buffers(engine):
-    inputs = []
-    outputs = []
-    bindings = []
-    stream = cuda.Stream()
-    with engine.create_execution_context() as context:
-        for binding in engine:
-            # size = trt.volume(engine.get_tensor_shape(binding))
-            # size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
-            size = trt.volume(engine.get_binding_shape(binding))
-            dtype = trt.nptype(engine.get_binding_dtype(binding))
-            logging.debug(f"size: {size} dtype: {dtype}")
-            logging.debug(f"shape: {engine.get_binding_shape(binding)}")
-            # dtype = trt.nptype(engine.get_tensor_dtype(binding))
-            # logging.debug(f"dtype: {dtype}")
-            # Allocate host and device buffers
-            host_mem = cuda.pagelocked_empty(size, dtype)
-            device_mem = cuda.mem_alloc(host_mem.nbytes)
-            # Append the device buffer to device bindings.
-            bindings.append(int(device_mem))
-            # Append to the appropriate list.
-            if engine.binding_is_input(binding):
-                inputs.append(HostDeviceMem(host_mem, device_mem))
-            else:
-                outputs.append(HostDeviceMem(host_mem, device_mem))
-            # if engine.get_tensor_mode(binding) == TensorIOMode.INPUT:
-            #     inputs.append(HostDeviceMem(host_mem, device_mem)) 
-            # else: 
-            #     outputs.append(HostDeviceMem(host_mem, device_mem))
-    return inputs, outputs, bindings, stream
+
+
+# def generate_engine_from_onnx(onnx_file_path: str):
+# 	with trt.Builder(TRT_LOGGER) as builder, builder.create_network(EXPLICIT_BATCH) as network, trt.OnnxParser(network, TRT_LOGGER) as parser:
+# 		config = builder.create_builder_config()
+# 		config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
+# 		with open(onnx_file_path, 'rb') as model:
+# 			if not parser.parse(model.read()):
+# 				print ('ERROR: Failed to parse the ONNX file.')
+# 				for error in range(parser.num_errors):
+# 					print (parser.get_error(error))
+# 				return None
+
+# 		serialized_engine = builder.build_serialized_network(network, config)
+
+# 		logging.error(f"serialized_engine_is_null: {serialized_engine is None}")
+# 		logging.error(f"config is null: {config is None}")
+# 		logging.error(f"network is null: {network is None}")
+
+# 		engine = runtime.deserialize_cuda_engine(serialized_engine)
+		
+# 		engine_file_path = onnx_file_path.replace(".onnx", ".trt")
+# 		with open(engine_file_path, "wb") as f:
+# 			f.write(engine.serialize())
+
+# 		return engine
 
     # self.inputs, self.outputs, self.bindings = [], [], []
     #     self.stream = cuda.Stream()

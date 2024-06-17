@@ -36,11 +36,15 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 	# Transpose the dimensions and add a batch dimension
 	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
 	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	# imgL = cv2.resize(left_img, (h, w), interpolation=cv2.INTER_LINEAR)
+	# imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
 	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 
 	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
 	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	# imgL_dw2 = cv2.resize(left_img, (h // 2, w // 2), interpolation=cv2.INTER_LINEAR)
+	# imgR_dw2 = cv2.resize(right_img, (h //2, w //2),  interpolation=cv2.INTER_LINEAR)
 	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
 	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	
@@ -48,11 +52,13 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
 	pred_disp = model.run([output_name], {
 						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
+	
+	logging.warning(f"output shape after inference => {pred_disp.shape}")
 	return np.squeeze(pred_disp[:, 0, :, :])
 
 def main(num_frames):
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("TEST", 2 * W, H)
+	cv2.resizeWindow("TEST", (2 * W, H))
 
 	# sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
 	# sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
@@ -86,6 +92,8 @@ def main(num_frames):
 
 		left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
 		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		# left = cv2.resize(left_img, (H, W), interpolation=cv2.INTER_LINEAR)
+		# right = cv2.resize(right_img, (H, W), interpolation=cv2.INTER_LINEAR)
 
 		start_time = time.time()
 		
@@ -122,5 +130,5 @@ if __name__ == "__main__":
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	
-	num_frames = 5
+	num_frames = 1
 	main(num_frames)	
