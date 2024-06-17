@@ -8,7 +8,8 @@ import numpy as np
 import cv2
 import os
 import trt_utils
-import pycuda.driver as cuda 
+import pycuda.driver as cuda
+import pycuda.autoinit
 import utils
 # ssimport pycuda.driver as cuda
 
@@ -80,7 +81,7 @@ class TRTEngine:
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
 				self.bindings.append(int(device_mem))
-        		
+				
 				if self.engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
 					self.inputs.append({'host': host_mem, 
 						 				'device': device_mem, 
@@ -94,6 +95,26 @@ class TRTEngine:
 										'shape': shape,
 										'dtype': dtype})
 
+
+	def run_trt_inference(self):
+		for inp in self.inputs:
+			cuda.memcpy_htod_async(inp['device'], inp['host'], self.stream)
+
+			# run inference
+			self.context.execute_async_v2(
+				bindings=self.bindings,
+				stream_handle=self.stream.handle)
+
+			# fetch outputs from gpu
+			for out in self.outputs:
+				cuda.memcpy_dtoh_async(out['host'], out['device'], self.stream)
+
+			# synchronize stream
+			self.stream.synchronize()
+
+			trt_inference_outputs = [out['host'] for out in self.outputs]
+			# output = np.reshape(data, (1, 2, 640, 640))[0]
+			return trt_inference_outputs
 
 	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
 		# Transfer input data to the GPU.
@@ -159,35 +180,7 @@ def main():
 	logging.warning(f"imgR.shape: {imgR.shape}")
 	logging.warning(f"flow_init.shape: {flow_init.shape}")
 
-	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
-	# trt_engine.inputs[0]['host'] = imgL_dw2
-	# trt_engine.inputs[1]['host'] = imgR_dw2
-	trt_engine.inputs[0]['host'] = imgL
-	trt_engine.inputs[1]['host'] = imgR
-	trt_engine.inputs[2]['host'] = flow_init
-
-	# trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
-	# trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
-	# trt_engine.inputs[2]['host'] = np.ravel(flow_init)
-	
-	
-
-	# transfer data to the gpu
-	for inp in trt_engine.inputs:
-		cuda.memcpy_htod_async(inp['device'], inp['host'], trt_engine.stream)
-
-	# run inference
-	trt_engine.context.execute_async_v2(
-		bindings=trt_engine.bindings,
-		stream_handle=trt_engine.stream.handle)
-
-	# fetch outputs from gpu
-	for out in trt_engine.outputs:
-		cuda.memcpy_dtoh_async(out['host'], out['device'], trt_engine.stream)
-		
-	# synchronize stream
-	trt_engine.stream.synchronize()
-
+	# VISUALIZING INPUT DATA
 	left_image_cv = np.squeeze(imgL[:, :, :, :])
 	left_image_cv = utils.uint8_normalization(left_image_cv).transpose(1, 2, 0)
 	
@@ -203,21 +196,39 @@ def main():
 	cv2.imshow("TEST", cv2.hconcat([left_image_cv, right_image_cv]))
 	cv2.waitKey(0)
 	
-	flow_init_cv = np.squeeze(flow_init[:, :, :, :])
+
+	# LOADING PREPARED INPUT DATA TO TRT ENGINE 
+	# trt_engine.inputs[0]['host'] = imgL_dw2
+	# trt_engine.inputs[1]['host'] = imgR_dw2
+	trt_engine.inputs[0]['host'] = imgL
+	trt_engine.inputs[1]['host'] = imgR
+	trt_engine.inputs[2]['host'] = flow_init
+
+	# trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
+	# trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
+	# trt_engine.inputs[2]['host'] = np.ravel(flow_init)
 	
-	# right_img_cv = np.squeeze(imgR[:, :, :, :])
 	
-	# # left_img_cv = trt_utils.convert_to_uint8_mono(imgL, (3, 480, 640))
-	# /right_img_cv = trt_utils.convert_to_uint8_mono(imgR)
-	# logging.debug(f"left_img_cv.shape: {left_img_cv.shape} left_img_cv.dtype: {left_img_cv.dtype}")
-	# # cv2.imshow("left-right", cv2.hconcat([left_img_cv, right_img_cv]))	
-	# # cv2.waitKey(0)
-	# # out_img_cv = trt_utils.convert_to_uint8_mono(data[0], (2, 480, 640))
-	# # cv2.imshow("output", out_img_cv)
-	# # cv2.waitKey(0)
-	# # # trt_utils.reshape_input_image(data)
-	# # # logging.debug(f"len(data): {len(data)}")
-	# # # logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
+	# RUNNING INFERENCE
+	trt_inference_outputs =  trt_engine.run_trt_inference()
+	logging.debug(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
+	logging.debug(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
+
+	# RESIZE TRT_INFERENCE_OUTPUT
+	output = trt_inference_outputs[0].reshape(1, 2, H, W)
+	logging.warning(f"[AFTER RESHAPING] output.shape: {output.shape} output.dtype: {output.dtype}")
+	output = np.squeeze(output[:, 0, :, :])
+	logging.warning(f"[AFTER SQUEEZING] output.shape: {output.shape} output.dtype: {output.dtype}")
+	# cv2.imshow("TEST", trt_inference_outputs[0])
+	# output = output.transpose(1, 2, 0)
+	# logging.warning(f"[AFTER TRANSPOSING] output.shape: {output.shape} output.dtype: {output.dtype}")
+	output_uint8 = utils.uint8_normalization(output)
+	logging.warning(f"[AFTER NORMALIZATION] output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")	
+	
+	cv2.imshow("TEST", output_uint8)
+	cv2.waitKey(0)
+	# flow_init_cv = np.squeeze(flow_init[:, :, :, :])
+	
 
 	# # # output = np.reshape(data[0], (1, 2, 480, 640))
 
