@@ -51,8 +51,8 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 	pred_flow_dw2 = model_no_flow.run(
 		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
 	
-	logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
-	logging.warning(f"pred_flow_dw2[0].shape: {pred_flow_dw2[0].shape}")
+	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
+	# logging.warning(f"pred_flow_dw2[0].shape: {pred_flow_dw2[0].shape}")
 
 	pred_disp = model.run([output_name], {
 						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
@@ -102,6 +102,7 @@ def main(num_frames):
 		start_time = time.time()
 		
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
+		logging.warning(f"model_inference.min(): {model_inference.min()} model_inference.max(): {model_inference.max()}")
 		# logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
 		model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
 		# logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
@@ -134,5 +135,5 @@ if __name__ == "__main__":
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
-	num_frames = 1
+	num_frames = 10
 	main(num_frames)	

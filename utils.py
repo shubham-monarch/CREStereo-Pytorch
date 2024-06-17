@@ -13,34 +13,45 @@ import time
 # - fix git tracking issue
 
 
-class FPS:
-    def __init__(self):
-        self.accum_time = 0
-        self.curr_fps = 0
-        self.fps = "FPS: ??"
+import matplotlib.pyplot as plt
 
-    def start(self):
-        self.prev_time = time.time()
+# def plot_histogram(data, title, bins=100, range=[0,1]):
+# 	plt.hist(data.flatten(), bins=bins, range=range)
+# 	plt.title(title)
+# 	plt.xlabel('Pixel Value')
+# 	plt.ylabel('Frequency')
+# 	plt.show()
+# 	plt.close()
 
-    def stop(self):
-        self.curr_time = time.time()
-        exec_time = self.curr_time - self.prev_time
-        self.prev_time = self.curr_time
-        self.accum_time += exec_time
+def plot_histograms(datasets, bins=[100, 100], ranges=[[0,1], [0,1]]):
+    plt.figure(figsize=(10, 10))
 
-    def get_fps(self):
-        self.curr_fps += 1
-        if self.accum_time > 1:
-            self.accum_time -= 1
-            self.fps = "FPS: " + str(self.curr_fps)
-            self.curr_fps = 0
-        return self.fps
+    for i, (data, title, bin, range) in enumerate(datasets):
+        plt.subplot(1, len(datasets), i+1)
+        plt.hist(data.flatten(), bins=bin, range=range)
+        plt.title(title)
+        plt.xlabel('Pixel Value')
+        plt.ylabel('Frequency')
+
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
 # input -> np.float32 disp_data
 def get_depth_data(disp_data, baseline, focal_length): 
 	assert disp_data.dtype == np.float32
 	depth_data = (baseline * focal_length) / (disp_data + 1e-6)
 	return depth_data 	
+
+
+def reject_outliers_2(data, m=2.):
+	d = np.abs(data - np.median(data))
+	mdev = np.median(d)
+	s = d / (mdev if mdev else 1.)
+	mask = s < m
+	return np.where(mask, data, np.nan)
+	# return data[s < m]
+
 
 # removes inf values and normalizes to 255
 def uint8_normalization(depth_map):
@@ -49,6 +60,8 @@ def uint8_normalization(depth_map):
 	depth_map_finite = np.where(np.isinf(depth_map), max_depth, depth_map)
 	depth_map_uint8 = cv2.normalize(depth_map_finite, depth_map_finite, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 	return depth_map_uint8
+
+
 
 def write_legend_plot(depth_error_data, save_location):
 	fig, axs = plt.subplots(1, 2, figsize=(20, 10))

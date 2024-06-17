@@ -11,6 +11,7 @@ import trt_utils
 import pycuda.driver as cuda
 import pycuda.autoinit
 import utils
+import matplotlib.pyplot as plt
 # ssimport pycuda.driver as cuda
 
 
@@ -38,6 +39,8 @@ import utils
 # - to use ravel
 # - upgrade HostDeviceMem class -> https://github.com/NVIDIA/TensorRT/blob/main/samples/python/common_runtime.py
 # - add cuda loading in .ppth to .onnx conversion script
+# - reload output to torch for further processing
+# - fix negative values in flow_init
 
 # (H, W)
 DIMS = (480, 640)
@@ -130,8 +133,15 @@ class TRTEngine:
 
 
 def main():
-	# engine = build_engine("models/crestereo_without_flow.onnx")
+	
+	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
+	cv2.resizeWindow("TEST", (W, H))
+
+	# plt.figure(figsize=(10,10))
+	plt_datasets = []
+
 	logging.debug(f"TensortRT version: {trt.__version__}")
+	
 	# onnx_model = "models/crestereo_without_flow.onnx"
 	# onnx_model = "models/crestereo_without_flow_simp.onnx"
 	onnx_model = "models/crestereo.onnx"
@@ -167,7 +177,8 @@ def main():
 	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
 	# imgL = cv2.resize(left_img, (h, w), interpolation=cv2.INTER_LINEAR)
 	# imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
-	flow_init = np.random.randn(1, 2, h//2, w//2).astype(np.float32)
+	flow_init = np.random.randn(1, 2, h//2, w//2).astype(np.float32) * 255.0
+	# flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
 	
 	# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
 	# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
@@ -190,11 +201,10 @@ def main():
 	logging.warning(f"left_image_cv.shape: {left_image_cv.shape} left_image_cv.dtype: {left_image_cv.dtype}")
 	logging.warning(f"right_image_cv.shape: {right_image_cv.shape} right_image_cv.dtype: {right_image_cv.dtype}")
 
-	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("TEST", (W, H))
-
+	
 	cv2.imshow("TEST", cv2.hconcat([left_image_cv, right_image_cv]))
 	cv2.waitKey(0)
+	
 	
 
 	# LOADING PREPARED INPUT DATA TO TRT ENGINE 
@@ -216,30 +226,29 @@ def main():
 
 	# RESIZE TRT_INFERENCE_OUTPUT
 	output = trt_inference_outputs[0].reshape(1, 2, H, W)
-	logging.warning(f"[AFTER RESHAPING] output.shape: {output.shape} output.dtype: {output.dtype}")
 	output = np.squeeze(output[:, 0, :, :])
-	logging.warning(f"[AFTER SQUEEZING] output.shape: {output.shape} output.dtype: {output.dtype}")
-	# cv2.imshow("TEST", trt_inference_outputs[0])
-	# output = output.transpose(1, 2, 0)
-	# logging.warning(f"[AFTER TRANSPOSING] output.shape: {output.shape} output.dtype: {output.dtype}")
-	output_uint8 = utils.uint8_normalization(output)
-	logging.warning(f"[AFTER NORMALIZATION] output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")	
 	
+	# flattened_data_float32 = output.flatten()
+	# logging.warning(f"flattened_data_float32.min: {output.flatten().min()} flattened_data_float32.max: {output.flatten().max()}")
+	# plt.subplot(1,2,1)
+	logging.warning(f"[BEFORE OUTLIER FILTERING]output.shape: {output.shape} output.dtype: {output.dtype}")
+	output_outlier_filtered = utils.reject_outliers_2(output)
+	logging.warning(f"[AFTER OUTLIER FILTERING] output_outlier_filtered.shape: {output_outlier_filtered.shape} output_outlier_filtered.dtype: {output_outlier_filtered.dtype}")	
+
+	# utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
+	plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
+	output_uint8 = utils.uint8_normalization(output_outlier_filtered)
+	logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
+
+	plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
+	
+	utils.plot_histograms(plt_datasets)
+
 	cv2.imshow("TEST", output_uint8)
 	cv2.waitKey(0)
-	# flow_init_cv = np.squeeze(flow_init[:, :, :, :])
+
+	plt.close()
 	
-
-	# # # output = np.reshape(data[0], (1, 2, 480, 640))
-
-	# # # logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
-
-	# # # output_ = np.squeeze(output[:, 0, :, :])	
-	# # # output_uint8 = utils.uint8_normalization(output_)	
-	# # # cv2.imshow("output", output_uint8)
-	# # # cv2.waitKey(0)
-
-
 if __name__ == '__main__':
-	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	main()
