@@ -33,6 +33,7 @@ import utils
 # - add trt engine class
 # - make onxx_without_flow work without onnx-simplifier
 # - addded batch_inference
+# - refactor code based on official nvidia examples
 
 
 # (H, W)
@@ -45,17 +46,20 @@ EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 runtime = trt.Runtime(TRT_LOGGER)
 
 
-# def do_inference_v2(context, bindings, inputs, outputs, stream):
-# 	# Transfer input data to the GPU.
-# 	[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
-# 	# Run inference.
-# 	context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-# 	# Transfer predictions back from the GPU.
-# 	[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
-# 	# Synchronize the stream
-# 	stream.synchronize()
-# 	# Return only the host outputs.
-# 	return [out.host for out in outputs]
+class TRTEngine:
+
+	def __init__(self, engine_path):
+		self.logger = trt.logger(trt.Logger.INFO)
+		trt.init_libnvinfer_plugins(self.logger, namespace="")
+
+		with open(engine_path, "rb") as f, trt.Runtime(self.logger) as runtime:
+			assert runtime
+			self.engine = runtime.deserialize_cuda_engine(f.read())
+		assert self.engine
+		self.context = self.engine.create_execution_context()
+		assert self.context
+
+
 
 def load_engine(model_path: str):
 	if os.path.exists(model_path) and model_path.endswith('trt'):
@@ -77,6 +81,7 @@ def generate_engine_from_onnx(onnx_file_path: str):
 				print ('ERROR: Failed to parse the ONNX file.')
 				for error in range(parser.num_errors):
 					print (parser.get_error(error))
+				return None
 
 		serialized_engine = builder.build_serialized_network(network, config)
 
@@ -93,16 +98,16 @@ def generate_engine_from_onnx(onnx_file_path: str):
 		return engine
 
 def do_inference_v2(context, bindings, inputs, outputs, stream):
-    # Transfer input data to the GPU.
-    [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
-    # Run inference.
-    context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-    # Transfer predictions back from the GPU.
-    [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
-    # Synchronize the stream
-    stream.synchronize()
-    # Return only the host outputs.
-    return [out.host for out in outputs]
+	# Transfer input data to the GPU.
+	[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
+	# Run inference.
+	context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
+	# Transfer predictions back from the GPU.
+	[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
+	# Synchronize the stream
+	stream.synchronize()
+	# Return only the host outputs.
+	return [out.host for out in outputs]
 
 
 def main():
@@ -146,7 +151,8 @@ def main():
 	(w ,h) = (W, H)
 	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
 	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
-	flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
+	# flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
+	flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
 	
 	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
 	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
