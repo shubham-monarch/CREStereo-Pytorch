@@ -9,19 +9,19 @@ import numpy as np
 from tensorrt import TensorIOMode
 import utils
 
-# input.shape => (3, 480, 640)
-def convert_to_uint8_mono(input, shape =(3, 480//2, 640//2), batch_size=1):
-    '''
-    Reshape the input image(1D) to the desired shape(1D -> 4D -> 2D)
-    '''
-    logging.debug(f"input.shape: {input.shape}")
-    new_shape = (batch_size,) + shape
-    logging.debug(f"new_shape: {new_shape}")
-    img = np.reshape(input, new_shape)
-    img = np.squeeze(img[:, 0, :, :])
-    assert img.ndim == 2
-    img_mono_channel = utils.uint8_normalization(img)
-    return img_mono_channel
+# # input.shape => (3, 480, 640)
+# def convert_to_uint8_mono(input):
+#     '''
+#     Convert from (1, 3, 480, 640).float to (480, 640).uint8
+#     '''
+#     # logging.debug(f"input.shape: {input.shape}")
+#     # new_shape = (batch_size,) + shape
+#     # logging.debug(f"new_shape: {new_shape}")
+#     img = np.reshape(input, new_shape)
+#     img = np.squeeze(img[:, 0, :, :])
+#     assert img.ndim == 2
+#     img_mono_channel = utils.uint8_normalization(img)
+#     return img_mono_channel
 
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):

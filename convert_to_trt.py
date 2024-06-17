@@ -124,6 +124,7 @@ def main():
 	trt_engine = TRTEngine(trt_engine)
 	trt_engine.allocate_buffers()
 
+	logging.debug(f"[BEFORE LOADING INPUT DATA]")
 	for input in trt_engine.inputs:
 		name = input['name']
 		logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
@@ -153,9 +154,10 @@ def main():
 	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	flow_init = np.ascontiguousarray(flow_init)
 
-	logging.debug(f"imgL.shape: {imgL.shape}")
-	logging.debug(f"imgR.shape: {imgR.shape}")
-	logging.debug(f"flow_init.shape: {flow_init.shape}")
+	logging.debug("[INPUT DATA FINAL SHAPES] => ")
+	logging.warning(f"imgL.shape: {imgL.shape}")
+	logging.warning(f"imgR.shape: {imgR.shape}")
+	logging.warning(f"flow_init.shape: {flow_init.shape}")
 
 	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
 	# trt_engine.inputs[0]['host'] = imgL_dw2
@@ -186,26 +188,45 @@ def main():
 	# synchronize stream
 	trt_engine.stream.synchronize()
 
-	# left_img_cv = trt_utils.convert_to_uint8_mono(input_data[0])
-	# right_img_cv = trt_utils.convert_to_uint8_mono(input_data[1])
+	left_image_cv = np.squeeze(imgL[:, :, :, :])
+	left_image_cv = utils.uint8_normalization(left_image_cv).transpose(1, 2, 0)
+	
+	right_image_cv = np.squeeze(imgR[:, :, :, :])
+	right_image_cv = utils.uint8_normalization(right_image_cv).transpose(1, 2, 0)
+	
+	logging.warning(f"left_image_cv.shape: {left_image_cv.shape} left_image_cv.dtype: {left_image_cv.dtype}")
+	logging.warning(f"right_image_cv.shape: {right_image_cv.shape} right_image_cv.dtype: {right_image_cv.dtype}")
+
+	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
+	cv2.resizeWindow("TEST", (W, H))
+
+	cv2.imshow("TEST", cv2.hconcat([left_image_cv, right_image_cv]))
+	cv2.waitKey(0)
+	
+	flow_init_cv = np.squeeze(flow_init[:, :, :, :])
+	
+	# right_img_cv = np.squeeze(imgR[:, :, :, :])
+	
+	# # left_img_cv = trt_utils.convert_to_uint8_mono(imgL, (3, 480, 640))
+	# /right_img_cv = trt_utils.convert_to_uint8_mono(imgR)
 	# logging.debug(f"left_img_cv.shape: {left_img_cv.shape} left_img_cv.dtype: {left_img_cv.dtype}")
-	# cv2.imshow("left-right", cv2.hconcat([left_img_cv, right_img_cv]))	
-	# cv2.waitKey(0)
-	# out_img_cv = trt_utils.convert_to_uint8_mono(data[0], (2, 480, 640))
-	# cv2.imshow("output", out_img_cv)
-	# cv2.waitKey(0)
-	# # trt_utils.reshape_input_image(data)
-	# # logging.debug(f"len(data): {len(data)}")
-	# # logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
-
-	# # output = np.reshape(data[0], (1, 2, 480, 640))
-
-	# # logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
-
-	# # output_ = np.squeeze(output[:, 0, :, :])	
-	# # output_uint8 = utils.uint8_normalization(output_)	
-	# # cv2.imshow("output", output_uint8)
+	# # cv2.imshow("left-right", cv2.hconcat([left_img_cv, right_img_cv]))	
 	# # cv2.waitKey(0)
+	# # out_img_cv = trt_utils.convert_to_uint8_mono(data[0], (2, 480, 640))
+	# # cv2.imshow("output", out_img_cv)
+	# # cv2.waitKey(0)
+	# # # trt_utils.reshape_input_image(data)
+	# # # logging.debug(f"len(data): {len(data)}")
+	# # # logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
+
+	# # # output = np.reshape(data[0], (1, 2, 480, 640))
+
+	# # # logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
+
+	# # # output_ = np.squeeze(output[:, 0, :, :])	
+	# # # output_uint8 = utils.uint8_normalization(output_)	
+	# # # cv2.imshow("output", output_uint8)
+	# # # cv2.waitKey(0)
 
 
 if __name__ == '__main__':

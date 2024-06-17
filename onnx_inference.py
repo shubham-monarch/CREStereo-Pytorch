@@ -40,7 +40,7 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 	# imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
 	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-
+	
 	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
 	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
 	# imgL_dw2 = cv2.resize(left_img, (h // 2, w // 2), interpolation=cv2.INTER_LINEAR)
