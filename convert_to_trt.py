@@ -75,16 +75,24 @@ class TRTEngine:
 				size = trt.volume(shape)
 				dtype = trt.nptype(self.engine.get_binding_dtype(binding))
 				
-				logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
+				# logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
 				
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
 				self.bindings.append(int(device_mem))
         		
 				if self.engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
-					self.inputs.append({'host': host_mem, 'device': device_mem})
+					self.inputs.append({'host': host_mem, 
+						 				'device': device_mem, 
+										'name': binding,
+										'shape': shape,
+										'dtype': dtype})
 				else:
-					self.outputs.append({'host': host_mem, 'device': device_mem})
+					self.outputs.append({'host': host_mem,
+						   				'device': device_mem,
+										'name': binding,
+										'shape': shape,
+										'dtype': dtype})
 
 
 	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
@@ -116,31 +124,51 @@ def main():
 	trt_engine = TRTEngine(trt_engine)
 	trt_engine.allocate_buffers()
 
-	# # do_inference_v2(context, inputs, outputs, bindings, stream, batch_size=1)
-	# do_inference_v2(context, inputs, outputs, bindings, stream)
+	for input in trt_engine.inputs:
+		name = input['name']
+		logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
+		
+	for output in trt_engine.outputs: 
+		name = output['name']
+		logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
 
-
-
-
-	# load the inputs
-	# Assuming left_img and right_img are your input images
+	# PREPARING INPUT DATA
 	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
 	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
 
 	(w ,h) = (W, H)
-	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
-	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	# imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
+	# imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
 	# flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
-	flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
+	# flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
+	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	# imgL = cv2.resize(left_img, (h, w), interpolation=cv2.INTER_LINEAR)
+	# imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
+	flow_init = np.random.randn(1, 2, h//2, w//2).astype(np.float32)
 	
-	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+	# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	flow_init = np.ascontiguousarray(flow_init)
 
+	logging.debug(f"imgL.shape: {imgL.shape}")
+	logging.debug(f"imgR.shape: {imgR.shape}")
+	logging.debug(f"flow_init.shape: {flow_init.shape}")
+
 	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
-	trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
-	trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
-	trt_engine.inputs[2]['host'] = np.ravel(flow_init)
+	# trt_engine.inputs[0]['host'] = imgL_dw2
+	# trt_engine.inputs[1]['host'] = imgR_dw2
+	trt_engine.inputs[0]['host'] = imgL
+	trt_engine.inputs[1]['host'] = imgR
+	trt_engine.inputs[2]['host'] = flow_init
+
+	# trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
+	# trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
+	# trt_engine.inputs[2]['host'] = np.ravel(flow_init)
+	
+	
 
 	# transfer data to the gpu
 	for inp in trt_engine.inputs:
@@ -158,29 +186,26 @@ def main():
 	# synchronize stream
 	trt_engine.stream.synchronize()
 
-	data = [out['host'] for out in trt_engine.outputs]
-	
-	# inspecting input data
-	input_data = [inp['host'] for inp in trt_engine.inputs]
-	logging.debug(f"len(input_data): {len(input_data)} input_data[0].shape: {input_data[0].shape} input_data[0].dtype: {input_data[0].dtype}")
-
-	left_img_cv = trt_utils.reshape_input_image(input_data[0])
-	logging.debug(f"left_img_cv.shape: {left_img_cv.shape} left_img_cv.dtype: {left_img_cv.dtype}")
-	cv2.imshow("left_img", left_img_cv)	
-	cv2.waitKey(0)
-
-	# trt_utils.reshape_input_image(data)
-	# logging.debug(f"len(data): {len(data)}")
-	# logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
-
-	# output = np.reshape(data[0], (1, 2, 480, 640))
-
-	# logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
-
-	# output_ = np.squeeze(output[:, 0, :, :])	
-	# output_uint8 = utils.uint8_normalization(output_)	
-	# cv2.imshow("output", output_uint8)
+	# left_img_cv = trt_utils.convert_to_uint8_mono(input_data[0])
+	# right_img_cv = trt_utils.convert_to_uint8_mono(input_data[1])
+	# logging.debug(f"left_img_cv.shape: {left_img_cv.shape} left_img_cv.dtype: {left_img_cv.dtype}")
+	# cv2.imshow("left-right", cv2.hconcat([left_img_cv, right_img_cv]))	
 	# cv2.waitKey(0)
+	# out_img_cv = trt_utils.convert_to_uint8_mono(data[0], (2, 480, 640))
+	# cv2.imshow("output", out_img_cv)
+	# cv2.waitKey(0)
+	# # trt_utils.reshape_input_image(data)
+	# # logging.debug(f"len(data): {len(data)}")
+	# # logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
+
+	# # output = np.reshape(data[0], (1, 2, 480, 640))
+
+	# # logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
+
+	# # output_ = np.squeeze(output[:, 0, :, :])	
+	# # output_uint8 = utils.uint8_normalization(output_)	
+	# # cv2.imshow("output", output_uint8)
+	# # cv2.waitKey(0)
 
 
 if __name__ == '__main__':

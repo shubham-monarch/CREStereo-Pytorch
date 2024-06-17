@@ -10,7 +10,7 @@ from tensorrt import TensorIOMode
 import utils
 
 # input.shape => (3, 480, 640)
-def reshape_input_image(input, shape =(3, 480//2, 640//2), batch_size=1):
+def convert_to_uint8_mono(input, shape =(3, 480//2, 640//2), batch_size=1):
     '''
     Reshape the input image(1D) to the desired shape(1D -> 4D -> 2D)
     '''
