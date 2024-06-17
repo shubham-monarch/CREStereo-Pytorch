@@ -54,6 +54,8 @@ def allocate_buffers(engine):
             # size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
             size = trt.volume(engine.get_binding_shape(binding))
             dtype = trt.nptype(engine.get_binding_dtype(binding))
+            logging.debug(f"size: {size} dtype: {dtype}")
+            logging.debug(f"shape: {engine.get_binding_shape(binding)}")
             # dtype = trt.nptype(engine.get_tensor_dtype(binding))
             # logging.debug(f"dtype: {dtype}")
             # Allocate host and device buffers

@@ -9,7 +9,7 @@ import cv2
 import os
 import trt_utils
 import pycuda.driver as cuda 
-
+import utils
 # ssimport pycuda.driver as cuda
 
 
@@ -119,9 +119,11 @@ def main():
 	context = engine.create_execution_context()
 	inputs, outputs, bindings, stream = trt_utils.allocate_buffers(engine)
 	
-
-
-	# inferencing
+	# logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
+	
+	# for output in outputs:
+	# 	logging.debug(f"output.host.shape: {output.host.shape} output.device.shape: {output.device.shape}")
+	# # inferencing
 	
 
 	# logging.debug(f"type(inputs[0]): {type(inputs[0])}")
@@ -158,14 +160,27 @@ def main():
 	inputs[1].host = imgR_dw2
 	inputs[2].host = flow_init
 
-	trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[-1]
-	
-	logging.debug(f"trt_outputs: {trt_outputs.shape}")
+	trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[0]
+	logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
+	logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")
+	logging.debug(f"type(trt_outputs): {type(trt_outputs)}")
+	# logging.debug(f"trt_outputs: {trt_outputs.shape}")
 
-	# # inputs[0].host = np.random.random_sample(inputs[0].host.shape).astype(np.float32)
-	# # inputs[1].host = np.random.random_sample(inputs[1].host.shape).astype(np.float32)
+	output = trt_outputs.reshape((1, 2, h, w))
+	logging.debug(f"output.shape: {output.shape}")
+	output_ = np.squeeze(output[:, 0, :, :])
+
+	output_uint8 = utils.uint8_normalization(output_)
+	cv2.imshow("output", output_uint8)
+	cv2.waitKey(0)
+
+	# output_ = np.squeeze(trt_outputs[:, 0, :, :])
+	# logging.debug(f"output_.shape: {output_.shape}")
+	# logging.debug(f"output.dtype: {output_.dtype}")
+	# # # inputs[0].host = np.random.random_sample(inputs[0].host.shape).astype(np.float32)
+	# # # inputs[1].host = np.random.random_sample(inputs[1].host.shape).astype(np.float32)
 	
-	# output = do_inference_v2(context, bindings, inputs, outputs, stream)
+	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
 
 
 
