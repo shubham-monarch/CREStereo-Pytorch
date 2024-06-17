@@ -71,45 +71,42 @@ class TRTEngine:
 
 		with self.engine.create_execution_context() as context:
 			for binding in self.engine:
-				size = trt.volume(self.engine.get_binding_shape(binding))
+				shape = self.engine.get_binding_shape(binding)	
+				size = trt.volume(shape)
 				dtype = trt.nptype(self.engine.get_binding_dtype(binding))
-				logging.debug(f"{binding}.shape: {size} dtype: {dtype}")
-				# logging.debug(f"shape: {self.engine.get_binding_shape(binding)}")
+				
+				logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
+				
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
+				
 				# Append the device buffer to device bindings.
 				self.bindings.append(int(device_mem))
+				
 				# Append to the appropriate list.
 				if self.engine.binding_is_input(binding):
 					self.inputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))
 				else:
-					self.outputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))		
-		
+					self.outputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))	
+
+	
+	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
+		# Transfer input data to the GPU.
+		[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
+		# Run inference.
+		context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
+		# Transfer predictions back from the GPU.
+		[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
+		# Synchronize the stream
+		stream.synchronize()
+		# Return only the host outputs.
+		return [out.host for out in outputs]
 
 
-def load_engine(model_path: str):
-	if os.path.exists(model_path) and model_path.endswith('trt'):
-		print(f"Reading engine from file {model_path}")
-		with open(model_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
-			return runtime.deserialize_cuda_engine(f.read())
-	else:
-		print(f"FILE: {model_path} not found or extension not supported.")
 
 
 
 
-
-def do_inference_v2(context, bindings, inputs, outputs, stream):
-	# Transfer input data to the GPU.
-	[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
-	# Run inference.
-	context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-	# Transfer predictions back from the GPU.
-	[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
-	# Synchronize the stream
-	stream.synchronize()
-	# Return only the host outputs.
-	return [out.host for out in outputs]
 
 
 def main():
@@ -118,7 +115,9 @@ def main():
 	# onnx_model = "models/crestereo_without_flow.onnx"
 	# onnx_model = "models/crestereo_without_flow_simp.onnx"
 	onnx_model = "models/crestereo.onnx"
-	trt_engine = "models/crestereo.trt"
+	# trt_engine = "models/crestereo.trt"
+	trt_engine = onnx_model.replace(".onnx", ".trt")	
+	
 	# engine = generate_engine_from_onnx(onnx_model)
 	# trt.init_libnvinfer_plugins(None, "")
 	# engine = load_engine("models/crestereo.trt")
@@ -126,16 +125,10 @@ def main():
 	trt_engine = TRTEngine(trt_engine)
 	trt_engine.allocate_buffers()
 
-	# logging.debug(f"type(inputs[0]): {type(inputs[0])}")
-	# # logging.debug(f"dir(inputs[0]): {dir(inputs[0])}")
-	# logging.debug(f"inputs[0].host: {inputs[0].host} inputs[0].device: {inputs[0].device}")
-	# logging.debug(f"len(inputs): {len(inputs)}")
-	# logging.debug(f"type(outputs): {type(outputs)}")
-	# logging.debug(f"type(bindings): {type(bindings)}")
-	# logging.debug(f"type(stream): {type(stream)}")
-
 	# # do_inference_v2(context, inputs, outputs, bindings, stream, batch_size=1)
 	# do_inference_v2(context, inputs, outputs, bindings, stream)
+
+
 
 
 	# load the inputs
@@ -151,17 +144,31 @@ def main():
 	
 	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
 	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	
-	imgL_dw2 /= 255.0 
-	imgR_dw2 /= 255.0
-	
 	flow_init = np.ascontiguousarray(flow_init)
-	
-	# inputs[0].host = imgL_dw2
-	# inputs[1].host = imgR_dw2
-	# inputs[2].host = flow_init
 
-	# trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[0]
+
+	
+	# imgL_dw2 /= 255.0 
+	# imgR_dw2 /= 255.0
+	
+	# trt_engine.inputs[0].host = imgL_dw2
+	# trt_engine.inputs[1].host = imgR_dw2
+	# trt_engine.inputs[2].host = flow_init
+
+	trt_engine.inputs[0].host = np.ravel(imgL_dw2)
+	trt_engine.inputs[1].host = np.ravel(imgR_dw2)
+	trt_engine.inputs[2].host = np.ravel(flow_init)
+
+	outputs = trt_engine.do_inference_v2(trt_engine.context,
+										trt_engine.bindings,
+										trt_engine.inputs, 
+										trt_engine.outputs,
+										trt_engine.stream)
+
+	logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
+
+	# trt_outputs = trt_engine.do_inference_v2(context, bindings, inputs, outputs, stream)[0]
+	
 	# logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
 	# logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")
 	# logging.debug(f"type(trt_outputs): {type(trt_outputs)}")
