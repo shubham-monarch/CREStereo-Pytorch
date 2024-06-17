@@ -36,7 +36,7 @@ import utils
 # - refactor code based on official nvidia examples
 # - to use ravel
 # - upgrade HostDeviceMem class -> https://github.com/NVIDIA/TensorRT/blob/main/samples/python/common_runtime.py
-
+# - add cuda loading in .ppth to .onnx conversion script
 
 # (H, W)
 DIMS = (480, 640)
@@ -79,17 +79,13 @@ class TRTEngine:
 				
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
-				
-				# Append the device buffer to device bindings.
 				self.bindings.append(int(device_mem))
-				
-				# Append to the appropriate list.
-				if self.engine.binding_is_input(binding):
-					self.inputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))
+        		
+				if self.engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
+					self.inputs.append({'host': host_mem, 'device': device_mem})
 				else:
-					self.outputs.append(trt_utils.HostDeviceMem(host_mem, device_mem))	
-
-	
+					self.outputs.append({'host': host_mem, 'device': device_mem})
+				
 	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
 		# Transfer input data to the GPU.
 		[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
@@ -155,19 +151,19 @@ def main():
 	# trt_engine.inputs[1].host = imgR_dw2
 	# trt_engine.inputs[2].host = flow_init
 
-	trt_engine.inputs[0].host = np.ravel(imgL_dw2)
-	trt_engine.inputs[1].host = np.ravel(imgR_dw2)
-	trt_engine.inputs[2].host = np.ravel(flow_init)
+	# trt_engine.inputs[0].host = np.ravel(imgL_dw2)
+	# trt_engine.inputs[1].host = np.ravel(imgR_dw2)
+	# trt_engine.inputs[2].host = np.ravel(flow_init)
 
-	outputs = trt_engine.do_inference_v2(trt_engine.context,
-										trt_engine.bindings,
-										trt_engine.inputs, 
-										trt_engine.outputs,
-										trt_engine.stream)
+	# outputs = trt_engine.do_inference_v2(trt_engine.context,
+	# 									trt_engine.bindings,
+	# 									trt_engine.inputs, 
+	# 									trt_engine.outputs,
+	# 									trt_engine.stream)
 
-	logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
+	# logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
 
-	# trt_outputs = trt_engine.do_inference_v2(context, bindings, inputs, outputs, stream)[0]
+	# # trt_outputs = trt_engine.do_inference_v2(context, bindings, inputs, outputs, stream)[0]
 	
 	# logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
 	# logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")

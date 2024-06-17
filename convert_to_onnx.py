@@ -47,5 +47,5 @@ if __name__ == '__main__':
 	                  input_names = ['left', 'right'],   # the model's input names
 	                  output_names = ['output'])
 
-
+	
 
