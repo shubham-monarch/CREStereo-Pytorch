@@ -96,14 +96,14 @@ def do_inference_v2(context, bindings, inputs, outputs, stream):
     # Transfer input data to the GPU.
     [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
     # Run inference.
-    context.execute_async_v3(stream.handle)
+    context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
     # Transfer predictions back from the GPU.
     [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
     # Synchronize the stream
     stream.synchronize()
     # Return only the host outputs.
     return [out.host for out in outputs]
-	
+
 
 def main():
 	# engine = build_engine("models/crestereo_without_flow.onnx")
@@ -116,12 +116,18 @@ def main():
 	engine = load_engine("models/crestereo.trt")
 	
 	# trt_utils.allocate_buffers(engine)
-	# context = engine.create_execution_context()
-	# inputs, outputs, bindings, stream = trt_utils.allocate_buffers(engine)
+	context = engine.create_execution_context()
+	inputs, outputs, bindings, stream = trt_utils.allocate_buffers(engine)
 	
+
+
+	# inferencing
+	
+
 	# logging.debug(f"type(inputs[0]): {type(inputs[0])}")
 	# # logging.debug(f"dir(inputs[0]): {dir(inputs[0])}")
 	# logging.debug(f"inputs[0].host: {inputs[0].host} inputs[0].device: {inputs[0].device}")
+	logging.debug(f"len(inputs): {len(inputs)}")
 	# logging.debug(f"type(outputs): {type(outputs)}")
 	# logging.debug(f"type(bindings): {type(bindings)}")
 	# logging.debug(f"type(stream): {type(stream)}")
@@ -130,20 +136,32 @@ def main():
 	# do_inference_v2(context, inputs, outputs, bindings, stream)
 
 
-	# # load the inputs
-	# # Assuming left_img and right_img are your input images
-	# left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
-	# right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
+	# load the inputs
+	# Assuming left_img and right_img are your input images
+	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
+	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
 
-	# (w ,h) = (W, H)
-	# imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
-	# imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
-	# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-	# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-
-	# inputs[0].host = imgL_dw2
-	# inputs[1].host = imgR_dw2
+	(w ,h) = (W, H)
+	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
+	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
 	
+	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	
+	imgL_dw2 /= 255.0 
+	imgR_dw2 /= 255.0
+	
+	flow_init = np.ascontiguousarray(flow_init)
+	
+	inputs[0].host = imgL_dw2
+	inputs[1].host = imgR_dw2
+	inputs[2].host = flow_init
+
+	trt_outputs = do_inference_v2(context, bindings, inputs, outputs, stream)[-1]
+	
+	logging.debug(f"trt_outputs: {trt_outputs.shape}")
+
 	# # inputs[0].host = np.random.random_sample(inputs[0].host.shape).astype(np.float32)
 	# # inputs[1].host = np.random.random_sample(inputs[1].host.shape).astype(np.float32)
 	
