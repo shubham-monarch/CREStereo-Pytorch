@@ -85,7 +85,8 @@ class TRTEngine:
 					self.inputs.append({'host': host_mem, 'device': device_mem})
 				else:
 					self.outputs.append({'host': host_mem, 'device': device_mem})
-				
+
+
 	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
 		# Transfer input data to the GPU.
 		[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
@@ -97,12 +98,6 @@ class TRTEngine:
 		stream.synchronize()
 		# Return only the host outputs.
 		return [out.host for out in outputs]
-
-
-
-
-
-
 
 
 def main():
@@ -142,52 +137,50 @@ def main():
 	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	flow_init = np.ascontiguousarray(flow_init)
 
+	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
+	trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
+	trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
+	trt_engine.inputs[2]['host'] = np.ravel(flow_init)
 
+	# transfer data to the gpu
+	for inp in trt_engine.inputs:
+		cuda.memcpy_htod_async(inp['device'], inp['host'], trt_engine.stream)
+
+	# run inference
+	trt_engine.context.execute_async_v2(
+		bindings=trt_engine.bindings,
+		stream_handle=trt_engine.stream.handle)
+
+	# fetch outputs from gpu
+	for out in trt_engine.outputs:
+		cuda.memcpy_dtoh_async(out['host'], out['device'], trt_engine.stream)
+		
+	# synchronize stream
+	trt_engine.stream.synchronize()
+
+	data = [out['host'] for out in trt_engine.outputs]
 	
-	# imgL_dw2 /= 255.0 
-	# imgR_dw2 /= 255.0
-	
-	# trt_engine.inputs[0].host = imgL_dw2
-	# trt_engine.inputs[1].host = imgR_dw2
-	# trt_engine.inputs[2].host = flow_init
+	# inspecting input data
+	input_data = [inp['host'] for inp in trt_engine.inputs]
+	logging.debug(f"len(input_data): {len(input_data)} input_data[0].shape: {input_data[0].shape} input_data[0].dtype: {input_data[0].dtype}")
 
-	# trt_engine.inputs[0].host = np.ravel(imgL_dw2)
-	# trt_engine.inputs[1].host = np.ravel(imgR_dw2)
-	# trt_engine.inputs[2].host = np.ravel(flow_init)
+	left_img_cv = trt_utils.reshape_input_image(input_data[0])
+	logging.debug(f"left_img_cv.shape: {left_img_cv.shape} left_img_cv.dtype: {left_img_cv.dtype}")
+	cv2.imshow("left_img", left_img_cv)	
+	cv2.waitKey(0)
 
-	# outputs = trt_engine.do_inference_v2(trt_engine.context,
-	# 									trt_engine.bindings,
-	# 									trt_engine.inputs, 
-	# 									trt_engine.outputs,
-	# 									trt_engine.stream)
+	# trt_utils.reshape_input_image(data)
+	# logging.debug(f"len(data): {len(data)}")
+	# logging.debug(f"data[0].shape: {data[0].shape} data[0].dtype: {data[0].dtype}")
 
-	# logging.debug(f"type(outputs): {type(outputs)} len(outputs): {len(outputs)}")
+	# output = np.reshape(data[0], (1, 2, 480, 640))
 
-	# # trt_outputs = trt_engine.do_inference_v2(context, bindings, inputs, outputs, stream)[0]
-	
-	# logging.debug(f"len(trt_outputs): {len(trt_outputs)}")
-	# logging.debug(f"trt_outputs[0].shape: {trt_outputs.shape}")
-	# logging.debug(f"type(trt_outputs): {type(trt_outputs)}")
-	# # logging.debug(f"trt_outputs: {trt_outputs.shape}")
+	# logging.debug(f"output.shape: {output.shape} output.dtype: {output.dtype}")
 
-	# # output = trt_outputs.reshape((1, 2, h, w))
-	# output = trt_outputs.reshape((1, w, h, 2))
-	# logging.debug(f"output.shape: {output.shape}")
-	# # output_ = np.squeeze(output[:, 0, :, :])
-	# output_ = np.squeeze(output[:, :, :, 0])
-
-	# output_uint8 = utils.uint8_normalization(output_)
+	# output_ = np.squeeze(output[:, 0, :, :])	
+	# output_uint8 = utils.uint8_normalization(output_)	
 	# cv2.imshow("output", output_uint8)
 	# cv2.waitKey(0)
-
-	# output_ = np.squeeze(trt_outputs[:, 0, :, :])
-	# logging.debug(f"output_.shape: {output_.shape}")
-	# logging.debug(f"output.dtype: {output_.dtype}")
-	# # # inputs[0].host = np.random.random_sample(inputs[0].host.shape).astype(np.float32)
-	# # # inputs[1].host = np.random.random_sample(inputs[1].host.shape).astype(np.float32)
-	
-	# # output = do_inference_v2(context, bindings, inputs, outputs, stream)
-
 
 
 if __name__ == '__main__':
