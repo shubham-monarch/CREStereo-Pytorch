@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import shutil
 import time
+import math
 
 # TO-DO=>
 # - jsonize config files
@@ -24,18 +25,21 @@ import matplotlib.pyplot as plt
 # 	plt.close()
 
 def plot_histograms(datasets, bins=[100, 100], ranges=[[0,1], [0,1]]):
-    plt.figure(figsize=(10, 10))
+	plt.figure(figsize=(10, 10))
+	
+	rows = math.ceil(len(datasets) / 2)
 
-    for i, (data, title, bin, range) in enumerate(datasets):
-        plt.subplot(1, len(datasets), i+1)
-        plt.hist(data.flatten(), bins=bin, range=range)
-        plt.title(title)
-        plt.xlabel('Pixel Value')
-        plt.ylabel('Frequency')
+	for i, (data, title, bin, range) in enumerate(datasets):
+		# plt.subplot(1, len(datasets), i+1)
+		plt.subplot(rows, 2, i+1)
+		plt.hist(data.flatten(), bins=bin, range=range)
+		plt.title(title)
+		plt.xlabel('Pixel Value')
+		plt.ylabel('Frequency')
 
-    plt.tight_layout()
-    plt.show()
-    plt.close()
+	plt.tight_layout()
+	plt.show()
+	plt.close()
 
 # input -> np.float32 disp_data
 def get_depth_data(disp_data, baseline, focal_length): 
@@ -52,6 +56,16 @@ def reject_outliers_2(data, m=2.):
 	return np.where(mask, data, np.nan)
 	# return data[s < m]
 
+def normalization_percentile(arr, lo= 2., hi=98.):
+	arr_min, arr_max = np.percentile(arr, (2, 98))  # Use 2nd and 98th percentiles
+	norm_perc_arr = (arr - arr_min) / (arr_max - arr_min)
+	return norm_perc_arr
+
+
+def normalization_log(arr):
+	log_arr = np.log1p(arr)  # Apply log(1 + x) to avoid log(0)
+	norm_log_arr = (log_arr - log_arr.min()) / (log_arr.max() - log_arr.min())
+	return norm_log_arr
 
 # removes inf values and normalizes to 255
 def uint8_normalization(depth_map):

@@ -37,13 +37,15 @@ import matplotlib.pyplot as plt
 # - refactor TRTEngine
 # - explore dynamic shapess
 # - altenative to using two trt engines
+# - asynchronous vs synchronous inference
 
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 runtime = trt.Runtime(TRT_LOGGER)
 ZED_IMAGE_DIR = "zed_input/images"
-
+BASELINE = 0.13
+FOCAL_LENGTH = 1093.5
 
 class TRTEngine:
 	def __init__(self, engine_path):
@@ -150,8 +152,8 @@ def main():
 	(H, W) = (480, 640)
 
 	# READING IMAGES FROM DISK
-	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
-	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
+	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_20.png")
+	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_20.png")
 
 	# < --------------- TRT_ENGINE_WITHOUT_FLOW ------------------- >
 	# engine construction
@@ -189,8 +191,8 @@ def main():
 	trt_engine.log_engine_io_details(engine_name="TRT_ENGINE")
 	
 	# pre-processing input
-	imgL = cv2.resize(left_img, (H, W), interpolation=cv2.INTER_LINEAR)
-	imgR = cv2.resize(right_img, (H, W), interpolation=cv2.INTER_LINEAR)
+	imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
+	imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
 	flow_init = trt_output
 	
 	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
@@ -204,22 +206,38 @@ def main():
 
 	# inference
 	trt_inference_outputs =  trt_engine.run_trt_inference()
-	logging.info(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
-	logging.info(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
-
+	
 	# resizing outputs
 	trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
-	
-	# adding disparity_float to plt_datasets
-	plt_datasets.append([trt_output, 'disparity_map_float', 100, [0,10]])
+	disparity_data = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
+	# plt_datasets.append([trt_output_squeezed, 'disparity(float)', 100, [0,10]])
 
-	trt_output_squeezed = np.squeeze(trt_output[:, 0, :, :])
-	trt_output_uint8 = utils.uint8_normalization(trt_output_squeezed)
+	depth_data = utils.get_depth_data(disparity_data, BASELINE, FOCAL_LENGTH)
+	plt_datasets.append([depth_data, 'depth_data(float)', 100, [0,2000]])
+	logging.info(f"depth_data.shape: {depth_data.shape} depth_data.dtype: {depth_data.dtype}")
 	
-	# adding disparity_uint8 to plt_datasets
+	# normalization -> log based
+	
+	disparity_normalized_log = utils.normalization_log(disparity_data)
+	plt_datasets.append([disparity_normalized_log, 'disparity_map [normalized_log]', 100, [0,2]])
+	
+	# normalization -> percentile (2, 98)
+	# trt_output_normalized_percentile = utils.normalization_percentile(trt_output_squeezed, 2, 98)
+	# plt_datasets.append([trt_output_normalized_percentile, 'disparity_map_normalized_percentile', 100, [-1,4]])
+	
+	# mx = np.max(trt_output_normalized_percentile)
+	# mn =np.min(trt_output_normalized_percentile)
+	# logging.info(f"mx: {mx} mn: {mn}")
+	
+	
+	
+	# trt_output_uint8 = utils.uint8_normalization(trt_output_normalized_log)
+	trt_output_uint8 = utils.uint8_normalization(disparity_normalized_log)
+	trt_output_uint8 = cv2.cvtColor(trt_output_uint8, cv2.COLOR_GRAY2BGR)
+	trt_output_unit8 = cv2.applyColorMap(trt_output_uint8, cv2.COLORMAP_INFERNO)
+	# trt_output_uint8 = utils.uint8_normalization(depth_data)
 	plt_datasets.append([trt_output_uint8, 'disparity_map_uint8', 255, [0,255]])	
-	logging.warning(f"output_uint8.shape: {trt_output_uint8.shape} output_uint8.dtype: {trt_output_uint8.dtype}")
-
+	
 
 	cv2.imshow("TEST", trt_output_uint8)
 	cv2.waitKey(0)

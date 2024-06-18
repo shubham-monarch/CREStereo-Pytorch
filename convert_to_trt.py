@@ -17,6 +17,8 @@ def GiB(val):
 if __name__ == "__main__":
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	# sonnx_file_path = 'models/m1.onnx'	
+	# onnx_file_path = 'models/crestereo_without_flow.onnx'	
 	onnx_file_path = 'models/crestereo.onnx'	
 	logging.debug(f"TensortRT version: {trt.__version__}")
 
@@ -26,8 +28,8 @@ if __name__ == "__main__":
 	
 	config = builder.create_builder_config()
 	# config.max_workspace_size = GiB(1) => deprecated
-	config.set_flag(trt.BuilderFlag.FP16)
-	# config.set_flag(trt.BuilderFlag.FP8ss)
+	# config.set_flag(trt.BuilderFlag.FP16)
+	config.set_flag(trt.BuilderFlag.OBEY_PRECISION_CONSTRAINTS)
 	config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, GiB(1))
 	
 	parser = trt.OnnxParser(network, TRT_LOGGER)
