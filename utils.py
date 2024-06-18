@@ -29,10 +29,11 @@ def plot_histograms(datasets, bins=[100, 100], ranges=[[0,1], [0,1]]):
 	
 	rows = math.ceil(len(datasets) / 2)
 
-	for i, (data, title, bin, range) in enumerate(datasets):
-		# plt.subplot(1, len(datasets), i+1)
+	# for i, (data, title, bin, range) in enumerate(datasets):
+	for i, (data, title) in enumerate(datasets):
 		plt.subplot(rows, 2, i+1)
-		plt.hist(data.flatten(), bins=bin, range=range)
+		# plt.hist(data.flatten(), bins=bin, range=range)
+		plt.hist(data.flatten())
 		plt.title(title)
 		plt.xlabel('Pixel Value')
 		plt.ylabel('Frequency')
@@ -63,8 +64,14 @@ def normalization_percentile(arr, lo= 2., hi=98.):
 
 
 def normalization_log(arr):
-	log_arr = np.log1p(arr)  # Apply log(1 + x) to avoid log(0)
+	# logging.info(f"Inside normalization_log function")
+	# logging.info(f"arr.shape: {arr.shape}")
+	if np.min(arr) < 0:
+		arr = arr - np.min(arr)
+
+	log_arr= np.log1p(arr)
 	norm_log_arr = (log_arr - log_arr.min()) / (log_arr.max() - log_arr.min())
+	# logging.info(f"norm_log_arr.shape: {norm_log_arr.shape}")
 	return norm_log_arr
 
 # removes inf values and normalizes to 255

@@ -12,6 +12,10 @@ import pycuda.driver as cuda
 import pycuda.autoinit
 import utils
 import matplotlib.pyplot as plt
+import fnmatch
+from tqdm import tqdm
+import random
+import time
 # ssimport pycuda.driver as cuda
 
 
@@ -131,14 +135,16 @@ class TRTEngine:
 
 
 
-def main():
+def main(num_frames):
+	
+	# IMG DIMS
+	(H, W) = (480, 640)
+
 	# managing cv2 window
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("TEST", (640, 480))
+	cv2.resizeWindow("TEST", (2 * W, H))
 	
-	# managing plt datasets
-	plt_datasets = []
-
+	
 	# onnx model paths
 	path_onnx_model = "models/crestereo.onnx"
 	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
@@ -148,103 +154,132 @@ def main():
 	path_trt_engine_without_flow = path_onnx_model_without_flow.replace(".onnx", ".trt")
 
 	
-	# IMG DIMS
-	(H, W) = (480, 640)
+	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
+	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
+	
+	image_files_left.sort()
+	image_files_right.sort()
 
-	# READING IMAGES FROM DISK
-	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_20.png")
-	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_20.png")
 
-	# < --------------- TRT_ENGINE_WITHOUT_FLOW ------------------- >
-	# engine construction
+	# logging.warn(f"image_files_left: {image_files_left[:5]}")
+	# logging.warn(f"image_files_right: {image_files_right[:5]}")
+	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
+	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
+	frame_rates = []
+	
+	# generating random frame indices
+	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
+	fps = trt_utils.FPS()
+
+	# trt-engine-without-flow construction
 	trt_engine_without_flow = TRTEngine(path_trt_engine_without_flow)
 	trt_engine_without_flow.log_engine_io_details(engine_name="TRT_ENGINE_WITHOUT_FLOW")
 	
-	# pre-processing input
-	imgL_dw2 = cv2.resize(left_img, (W // 2, H // 2), interpolation=cv2.INTER_LINEAR)
-	imgR_dw2 = cv2.resize(right_img, (W //2, H //2),  interpolation=cv2.INTER_LINEAR)
-	
-	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	
-	# loading input
-	trt_engine_without_flow.inputs[0]['host'] = imgL_dw2
-	trt_engine_without_flow.inputs[1]['host'] = imgR_dw2
-	
-	# inference
-	trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
-	logging.info(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
-	logging.info(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
-
-	# resizing outputs
-	trt_output = trt_inference_outputs[0].reshape(1, 2, H // 2, W // 2)
-	trt_output_squeezed = np.squeeze(trt_output[:, 0, :, :])
-	trt_output_uint8 = utils.uint8_normalization(trt_output_squeezed)	
-	cv2.imshow("TEST", trt_output_uint8)
-	cv2.waitKey(0)	
-
-	logging.warning(f"output_uint8.shape: {trt_output_uint8.shape} output_uint8.dtype: {trt_output_uint8.dtype}")
-
-	# < --------------- TRT_ENGINE ------------------- >
-	# engine construction
+	# trt-engine construction
 	trt_engine = TRTEngine(path_trt_engine)
 	trt_engine.log_engine_io_details(engine_name="TRT_ENGINE")
 	
-	# pre-processing input
-	imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-	imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-	flow_init = trt_output
-	
-	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	flow_init = np.ascontiguousarray(flow_init)
+	for i in (frame_indices):
+		plts = []
 
-	# loading input	
-	trt_engine.inputs[0]['host'] = imgL
-	trt_engine.inputs[1]['host'] = imgR
-	trt_engine.inputs[2]['host'] = flow_init
+		# READING IMAGES FROM DISK
+		# fps.start()
+		start_time = time.time()
+		rand_idx = random.randint(0, num_frames - 1)
+		# logging.warn(f"rand_idx: {rand_idx}")
+		left_img = cv2.imread(image_files_left[rand_idx])
+		right_img = cv2.imread(image_files_right[rand_idx])
 
-	# inference
-	trt_inference_outputs =  trt_engine.run_trt_inference()
-	
-	# resizing outputs
-	trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
-	disparity_data = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
-	# plt_datasets.append([trt_output_squeezed, 'disparity(float)', 100, [0,10]])
+		# < --------------- TRT_ENGINE_WITHOUT_FLOW ------------------- >	
+		# pre-processing input
+		imgL_dw2 = cv2.resize(left_img, (W // 2, H // 2), interpolation=cv2.INTER_LINEAR)
+		imgR_dw2 = cv2.resize(right_img, (W //2, H //2),  interpolation=cv2.INTER_LINEAR)
+		
+		imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+		imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		
+		# loading input
+		trt_engine_without_flow.inputs[0]['host'] = imgL_dw2
+		trt_engine_without_flow.inputs[1]['host'] = imgR_dw2
+		
+		# inference
+		trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
+		# logging.info(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
+		# logging.info(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
 
-	depth_data = utils.get_depth_data(disparity_data, BASELINE, FOCAL_LENGTH)
-	plt_datasets.append([depth_data, 'depth_data(float)', 100, [0,2000]])
-	logging.info(f"depth_data.shape: {depth_data.shape} depth_data.dtype: {depth_data.dtype}")
-	
-	# normalization -> log based
-	
-	disparity_normalized_log = utils.normalization_log(disparity_data)
-	plt_datasets.append([disparity_normalized_log, 'disparity_map [normalized_log]', 100, [0,2]])
-	
-	# normalization -> percentile (2, 98)
-	# trt_output_normalized_percentile = utils.normalization_percentile(trt_output_squeezed, 2, 98)
-	# plt_datasets.append([trt_output_normalized_percentile, 'disparity_map_normalized_percentile', 100, [-1,4]])
-	
-	# mx = np.max(trt_output_normalized_percentile)
-	# mn =np.min(trt_output_normalized_percentile)
-	# logging.info(f"mx: {mx} mn: {mn}")
-	
-	
-	
-	# trt_output_uint8 = utils.uint8_normalization(trt_output_normalized_log)
-	trt_output_uint8 = utils.uint8_normalization(disparity_normalized_log)
-	trt_output_uint8 = cv2.cvtColor(trt_output_uint8, cv2.COLOR_GRAY2BGR)
-	trt_output_unit8 = cv2.applyColorMap(trt_output_uint8, cv2.COLORMAP_INFERNO)
-	# trt_output_uint8 = utils.uint8_normalization(depth_data)
-	plt_datasets.append([trt_output_uint8, 'disparity_map_uint8', 255, [0,255]])	
-	
+		# resizing outputs
+		trt_output = trt_inference_outputs[0].reshape(1, 2, H // 2, W // 2)
+		logging.warning(f"trt_output.shape: {trt_output.shape}")
+		# disparity_data = np.squeeze(trt_output[:, 0, :, :])
+		
+		# < --------------- TRT_ENGINE ------------------- >	
+		# pre-processing input
+		imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		flow_init = trt_output
+		
+		imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		flow_init = np.ascontiguousarray(flow_init)
 
-	cv2.imshow("TEST", trt_output_uint8)
-	cv2.waitKey(0)
+		# loading input	
+		trt_engine.inputs[0]['host'] = imgL
+		trt_engine.inputs[1]['host'] = imgR
+		trt_engine.inputs[2]['host'] = flow_init
 
-	utils.plot_histograms(plt_datasets)
+		# inference
+		trt_inference_outputs =  trt_engine.run_trt_inference()
+		
+		# resizing outputs
+		trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
+		trt_output = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
+		logging.warn(f"trt_output.shape: {trt_output.shape} trt_output.dtype: {trt_output.dtype}")
+		
+		# fps.stop()
+		end_time = time.time()
+		frame_rate = 1 / (end_time - start_time)
+		logging.warning(f"Frame Rate: {frame_rate}")
 
+		# SCALING DISPARITY
+		# approach one
+		disp_data = trt_output
+		disp_data_uint8 = utils.uint8_normalization(disp_data)
+		logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		plts.append((disp_data, 'disparity'))
+		plts.append((disp_data_uint8, 'uint8'))
+		# <---------------------------------------------------------------------------------->
+		
+		# approach two
+		disp_data_norm_log = utils.normalization_log(disp_data)
+		disp_norm_log_uint8 = utils.uint8_normalization(disp_data_norm_log)
+		logging.warning(f"disp_data_norm_log.shape: {disp_data_norm_log.shape} disp_norm_log_uint8.shape: {disp_norm_log_uint8.shape}")
+		plts.append((disp_data_norm_log, 'disparity [normalized log]'))
+		plts.append((disp_norm_log_uint8, 'uint8'))
+
+		# approach three
+		disp_norm_percentile = utils.normalization_percentile(disp_data, 2, 98)
+		disp_norm_percentile_uint8 = utils.uint8_normalization(disp_norm_percentile)	
+		logging.warning(f"disp_norm_percentile.shape: {disp_norm_percentile.shape} disp_norm_percentile_uint8.shape: {disp_norm_percentile_uint8.shape}")
+		plts.append((disp_norm_percentile, 'disparity  [normalized percentile]'))
+		plts.append((disp_norm_percentile_uint8, 'uint8'))
+
+		imgL = np.squeeze(imgL[:, :, :, :]).transpose(1, 2, 0).astype(np.uint8)	
+		imgL = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
+
+		logging.info(f"imgL.shape: {imgL.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		
+		hconcat_uint8 = cv2.hconcat([ disp_data_uint8, disp_norm_log_uint8, disp_norm_percentile_uint8])
+		hconcat_imgL = cv2.hconcat([imgL, imgL, imgL])
+		
+		cv2.imshow("TEST", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		
+		cv2.waitKey(0)
+		utils.plot_histograms(plts)
+		
+		
+		
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
-	main()
+	num_images = 1
+	main(num_images)

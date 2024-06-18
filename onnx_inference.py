@@ -89,7 +89,7 @@ def main(num_frames):
 	# generating random frame indices
 	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
 
-	for i in tqdm(frame_indices):
+	for i in (frame_indices):
 		rand_idx = random.randint(0, num_frames - 1)
 		# logging.warn(f"rand_idx: {rand_idx}")
 		left_img = cv2.imread(image_files_left[rand_idx])
@@ -103,7 +103,7 @@ def main(num_frames):
 		start_time = time.time()
 		
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
-		logging.warning(f"model_inference.min(): {model_inference.min()} model_inference.max(): {model_inference.max()}")
+		# logging.warning(f"model_inference.min(): {model_inference.min()} model_inference.max(): {model_inference.max()}")
 		# logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
 		model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
 		# logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
