@@ -72,7 +72,6 @@ class TRTEngine:
 		self.outputs = []
 		self.bindings = []
 		self.stream = cuda.Stream()
-
 		with self.engine.create_execution_context() as context:
 			for binding in self.engine:
 				# shape = self.engine.get_binding_shape(binding)	
@@ -86,17 +85,16 @@ class TRTEngine:
 				self.bindings.append(int(device_mem))
 				if self.engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
 					self.inputs.append({'host': host_mem, 
-						 				'device': device_mem, 
-										'name': binding,
-										'shape': shape,
-										'dtype': dtype})
+									'device': device_mem, 
+									'name': binding,
+									'shape': shape,
+									'dtype': dtype})
 				else:
 					self.outputs.append({'host': host_mem,
-						   				'device': device_mem,
-										'name': binding,
-										'shape': shape,
-										'dtype': dtype})
-		
+									'device': device_mem,
+									'name': binding,
+									'shape': shape,
+									'dtype': dtype})
 		for i in range(self.engine.num_io_tensors):
 			self.context.set_tensor_address(self.engine.get_tensor_name(i), self.bindings[i])
 
@@ -104,20 +102,12 @@ class TRTEngine:
 		# transfer input data to the gpu
 		for inp in self.inputs:
 			cuda.memcpy_htod_async(inp['device'], inp['host'], self.stream)
-
-			# run inference
-			# self.context.execute_async_v2(
-			# 	bindings=self.bindings,
-			# 	stream_handle=self.stream.handle)
 			self.context.execute_async_v3(self.stream.handle)
-
 			# fetch outputs from gpu
 			for out in self.outputs:
 				cuda.memcpy_dtoh_async(out['host'], out['device'], self.stream)
-
 			# synchronize stream
 			self.stream.synchronize()
-
 			trt_inference_outputs = [out['host'] for out in self.outputs]
 			# output = np.reshape(data, (1, 2, 640, 640))[0]
 			return trt_inference_outputs
@@ -127,24 +117,32 @@ class TRTEngine:
 		for input in self.inputs:
 			name = input['name']
 			logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
-			
 		for output in self.outputs: 
 			name = output['name']
 			logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
 		logging.warning(f"\n")
 
-
-
 def main(num_frames):
-	
 	# IMG DIMS
 	(H, W) = (480, 640)
 
 	# managing cv2 window
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("TEST", (2 * W, H))
+		
+	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
+	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
 	
+	image_files_left.sort()
+	image_files_right.sort()
+
+	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
+	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
 	
+	# generating random frame indices
+	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
+	fps = trt_utils.FPS()
+
 	# onnx model paths
 	path_onnx_model = "models/crestereo.onnx"
 	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
@@ -152,24 +150,6 @@ def main(num_frames):
 	# trt engine paths
 	path_trt_engine = path_onnx_model.replace(".onnx", ".trt")		
 	path_trt_engine_without_flow = path_onnx_model_without_flow.replace(".onnx", ".trt")
-
-	
-	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
-	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
-	
-	image_files_left.sort()
-	image_files_right.sort()
-
-
-	# logging.warn(f"image_files_left: {image_files_left[:5]}")
-	# logging.warn(f"image_files_right: {image_files_right[:5]}")
-	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
-	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
-	frame_rates = []
-	
-	# generating random frame indices
-	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
-	fps = trt_utils.FPS()
 
 	# trt-engine-without-flow construction
 	trt_engine_without_flow = TRTEngine(path_trt_engine_without_flow)
@@ -240,7 +220,7 @@ def main(num_frames):
 		frame_rate = 1 / (end_time - start_time)
 		logging.warning(f"Frame Rate: {frame_rate}")
 
-		# SCALING DISPARITY
+		# DISPARITY NORMALIZATION
 		# approach one
 		disp_data = trt_output
 		disp_data_uint8 = utils.uint8_normalization(disp_data)
@@ -272,6 +252,7 @@ def main(num_frames):
 		hconcat_imgL = cv2.hconcat([imgL, imgL, imgL])
 		
 		cv2.imshow("TEST", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		cv2.imwrite(f"frame_{i}.png", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
 		
 		cv2.waitKey(0)
 		utils.plot_histograms(plts)
