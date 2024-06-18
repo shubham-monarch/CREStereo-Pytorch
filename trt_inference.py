@@ -66,6 +66,12 @@ class TRTEngine:
 		self.context = self.engine.create_execution_context()
 		assert self.context
 
+		self.allocate_buffers()
+
+		assert len(self.inputs) > 0
+		assert len(self.outputs) > 0
+		assert len(self.bindings) > 0
+		
 	def allocate_buffers(self):
 		self.inputs = []
 		self.outputs = []
@@ -101,8 +107,6 @@ class TRTEngine:
 		
 		for i in range(self.engine.num_io_tensors):
 			self.context.set_tensor_address(self.engine.get_tensor_name(i), self.bindings[i])
-			
-
 
 	def run_trt_inference(self):
 		# transfer input data to the gpu
@@ -126,17 +130,17 @@ class TRTEngine:
 			# output = np.reshape(data, (1, 2, 640, 640))[0]
 			return trt_inference_outputs
 
-	def do_inference_v2(self, context, bindings, inputs, outputs, stream):
-		# Transfer input data to the GPU.
-		[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
-		# Run inference.
-		context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-		# Transfer predictions back from the GPU.
-		[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
-		# Synchronize the stream
-		stream.synchronize()
-		# Return only the host outputs.
-		return [out.host for out in outputs]
+	# def do_inference_v2(self, context, bindings, inputs, outputs, stream):
+	# 	# Transfer input data to the GPU.
+	# 	[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
+	# 	# Run inference.
+	# 	context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
+	# 	# Transfer predictions back from the GPU.
+	# 	[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
+	# 	# Synchronize the stream
+	# 	stream.synchronize()
+	# 	# Return only the host outputs.
+	# 	return [out.host for out in outputs]
 
 
 
@@ -151,18 +155,18 @@ def main():
 
 	logging.debug(f"TensortRT version: {trt.__version__}")
 	
-	# onnx_model = "models/crestereo_without_flow.onnx"
-	# onnx_model = "models/crestereo_without_flow_simp.onnx"
-	onnx_model = "models/crestereo.onnx"
-	# trt_engine = "models/crestereo.trt"
-	trt_engine = onnx_model.replace(".onnx", ".trt")	
+	path_onnx_model = "models/crestereo.onnx"
+	path_trt_engine = path_onnx_model.replace(".onnx", ".trt")	
 	
+	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
+	path_trt_engine_without_flow = path_onnx_model_without_flow.replace(".onnx", ".trt")
+
 	# engine = generate_engine_from_onnx(onnx_model)
 	# trt.init_libnvinfer_plugins(None, "")
 	# engine = load_engine("models/crestereo.trt")
 	
-	trt_engine = TRTEngine(trt_engine)
-	trt_engine.allocate_buffers()
+	trt_engine = TRTEngine(path_trt_engine)
+	# trt_engine.allocate_buffers()
 
 	logging.debug(f"[INSPECTING TRT_ENGINE.inputs/outputs]")
 	for input in trt_engine.inputs:
