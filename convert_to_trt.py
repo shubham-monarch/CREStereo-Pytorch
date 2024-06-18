@@ -3,7 +3,7 @@
 import tensorrt as trt	
 import coloredlogs, logging
 
-TRT_LOGGER = trt.Logger(trt.Logger.VERBOSE)
+TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 # MAX_BATCH_SIZE = 1
 
@@ -17,7 +17,7 @@ def GiB(val):
 if __name__ == "__main__":
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
-	onnx_file_path = 'models/m1.onnx'	
+	onnx_file_path = 'models/crestereo.onnx'	
 	logging.debug(f"TensortRT version: {trt.__version__}")
 
 	builder = trt.Builder(TRT_LOGGER)
@@ -25,9 +25,9 @@ if __name__ == "__main__":
 	# builder.max_batch_size = MAX_BATCH_SIZE
 	
 	config = builder.create_builder_config()
-	config.max_workspace_size = GiB(1)
+	# config.max_workspace_size = GiB(1) => deprecated
 	config.set_flag(trt.BuilderFlag.FP16)
-	# config.set_flag(trt.BuilderFlag.FP8)
+	# config.set_flag(trt.BuilderFlag.FP8ss)
 	config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, GiB(1))
 	
 	parser = trt.OnnxParser(network, TRT_LOGGER)
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 				logging.error(parser.get_error(error))
 				exit(1)
 		else:
-			logging.warning("ONNX file was successfully parsed")	
+			logging.warning("ONNX file was successfully parsed!")	
 	
 	logging.warning('Building the TensorRT engine.  This would take a while...')
 	serialized_engine = builder.build_serialized_network(network, config)
