@@ -74,9 +74,11 @@ class TRTEngine:
 
 		with self.engine.create_execution_context() as context:
 			for binding in self.engine:
-				shape = self.engine.get_binding_shape(binding)	
+				# shape = self.engine.get_binding_shape(binding)	
+				shape = self.engine.get_tensor_shape(binding)	
 				size = trt.volume(shape)
-				dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+				# dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+				dtype = trt.nptype(self.engine.get_tensor_dtype(binding))
 				
 				# logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
 				
@@ -96,17 +98,22 @@ class TRTEngine:
 										'name': binding,
 										'shape': shape,
 										'dtype': dtype})
+		
+		for i in range(self.engine.num_io_tensors):
+			self.context.set_tensor_address(self.engine.get_tensor_name(i), self.bindings[i])
 			
 
 
 	def run_trt_inference(self):
+		# transfer input data to the gpu
 		for inp in self.inputs:
 			cuda.memcpy_htod_async(inp['device'], inp['host'], self.stream)
 
 			# run inference
-			self.context.execute_async_v2(
-				bindings=self.bindings,
-				stream_handle=self.stream.handle)
+			# self.context.execute_async_v2(
+			# 	bindings=self.bindings,
+			# 	stream_handle=self.stream.handle)
+			self.context.execute_async_v3(self.stream.handle)
 
 			# fetch outputs from gpu
 			for out in self.outputs:
@@ -157,7 +164,7 @@ def main():
 	trt_engine = TRTEngine(trt_engine)
 	trt_engine.allocate_buffers()
 
-	logging.debug(f"[BEFORE LOADING INPUT DATA]")
+	logging.debug(f"[INSPECTING TRT_ENGINE.inputs/outputs]")
 	for input in trt_engine.inputs:
 		name = input['name']
 		logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
