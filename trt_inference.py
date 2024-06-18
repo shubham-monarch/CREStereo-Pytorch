@@ -46,22 +46,17 @@ ZED_IMAGE_DIR = "zed_input/images"
 
 
 class TRTEngine:
-
 	def __init__(self, engine_path):
 		# self.logger = trt.logger(trt.Logger.INFO)
 		self.logger = trt.Logger(trt.Logger.INFO)
-
 		trt.init_libnvinfer_plugins(self.logger, namespace="")
-
 		with open(engine_path, "rb") as f, trt.Runtime(self.logger) as runtime:
 			assert runtime
 			self.engine = runtime.deserialize_cuda_engine(f.read())
 		assert self.engine
 		self.context = self.engine.create_execution_context()
 		assert self.context
-
 		self.allocate_buffers()
-
 		assert len(self.inputs) > 0
 		assert len(self.outputs) > 0
 		assert len(self.bindings) > 0
@@ -79,13 +74,10 @@ class TRTEngine:
 				size = trt.volume(shape)
 				# dtype = trt.nptype(self.engine.get_binding_dtype(binding))
 				dtype = trt.nptype(self.engine.get_tensor_dtype(binding))
-				
 				# logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
-				
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
 				self.bindings.append(int(device_mem))
-				
 				if self.engine.get_tensor_mode(binding) == trt.TensorIOMode.INPUT:
 					self.inputs.append({'host': host_mem, 
 						 				'device': device_mem, 
@@ -218,80 +210,22 @@ def main():
 	# resizing outputs
 	trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
 	
+	# adding disparity_float to plt_datasets
+	plt_datasets.append([trt_output, 'disparity_map_float', 100, [0,10]])
+
 	trt_output_squeezed = np.squeeze(trt_output[:, 0, :, :])
 	trt_output_uint8 = utils.uint8_normalization(trt_output_squeezed)
-
+	
+	# adding disparity_uint8 to plt_datasets
+	plt_datasets.append([trt_output_uint8, 'disparity_map_uint8', 255, [0,255]])	
 	logging.warning(f"output_uint8.shape: {trt_output_uint8.shape} output_uint8.dtype: {trt_output_uint8.dtype}")
+
 
 	cv2.imshow("TEST", trt_output_uint8)
 	cv2.waitKey(0)
 
-	# # flattened_data_float32 = output.flatten()
-	# # logging.warning(f"flattened_data_float32.min: {output.flatten().min()} flattened_data_float32.max: {output.flatten().max()}")
-	# # plt.subplot(1,2,1)
-	# logging.warning(f"[BEFORE OUTLIER FILTERING]output.shape: {output.shape} output.dtype: {output.dtype}")
-	# output_outlier_filtered = utils.reject_outliers_2(output)
-	# logging.warning(f"[AFTER OUTLIER FILTERING] output_outlier_filtered.shape: {output_outlier_filtered.shape} output_outlier_filtered.dtype: {output_outlier_filtered.dtype}")	
+	utils.plot_histograms(plt_datasets)
 
-	# # utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
-	# plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
-	# output_uint8 = utils.uint8_normalization(output_outlier_filtered)
-	# output_uint8 = np.where(output_uint8 != 0, output_uint8, np.nan)
-	# logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
-
-	# plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
-	
-	# utils.plot_histograms(plt_datasets)
-
-
-
-	# logging.debug("[INPUT DATA FINAL SHAPES] => ")
-	# logging.warning(f"imgL.shape: {imgL.shape}")
-	# logging.warning(f"imgR.shape: {imgR.shape}")
-	# logging.warning(f"flow_init.shape: {flow_init.shape}")
-
-	
-
-	# # LOADING PREPARED INPUT DATA TO TRT ENGINE 
-	# # trt_engine.inputs[0]['host'] = imgL_dw2
-	# # trt_engine.inputs[1]['host'] = imgR_dw2
-	# trt_engine.inputs[0]['host'] = imgL
-	# trt_engine.inputs[1]['host'] = imgR
-	# trt_engine.inputs[2]['host'] = flow_init
-
-	
-	
-	# # RUNNING INFERENCE
-	# trt_inference_outputs =  trt_engine.run_trt_inference()
-	# logging.debug(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
-	# logging.debug(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
-
-	# # RESIZE TRT_INFERENCE_OUTPUT
-	# output = trt_inference_outputs[0].reshape(1, 2, H, W)
-	# output = np.squeeze(output[:, 0, :, :])
-	
-	# # flattened_data_float32 = output.flatten()
-	# # logging.warning(f"flattened_data_float32.min: {output.flatten().min()} flattened_data_float32.max: {output.flatten().max()}")
-	# # plt.subplot(1,2,1)
-	# logging.warning(f"[BEFORE OUTLIER FILTERING]output.shape: {output.shape} output.dtype: {output.dtype}")
-	# output_outlier_filtered = utils.reject_outliers_2(output)
-	# logging.warning(f"[AFTER OUTLIER FILTERING] output_outlier_filtered.shape: {output_outlier_filtered.shape} output_outlier_filtered.dtype: {output_outlier_filtered.dtype}")	
-
-	# # utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
-	# plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
-	# output_uint8 = utils.uint8_normalization(output_outlier_filtered)
-	# output_uint8 = np.where(output_uint8 != 0, output_uint8, np.nan)
-	# logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
-
-	# plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
-	
-	# utils.plot_histograms(plt_datasets)
-
-	# cv2.imshow("TEST", output_uint8)
-	# cv2.waitKey(0)
-
-	# plt.close()
-	
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
