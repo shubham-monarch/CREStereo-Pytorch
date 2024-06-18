@@ -24,14 +24,12 @@ import matplotlib.pyplot as plt
 # - tinker with cudnn version 
 # - change cuda version to 12.1 
 # - read onnxsim => removes unsupported operations -> both python / cli apis
-# - how to specify precision
 # - intergrate onnxsimp api to code
 # - explore FPS() class -> YOLO -> https://github.com/sithu31296/PyTorch-ONNX-TRT/blob/master/examples/yolov4/yolov4/scripts/infer.py
 # - package structure from YOLO 
 # - add trt_info functions -> https://github.com/NVIDIA/TensorRT/tree/main/tools/experimental/trt-engine-explorer#workflow
 # - add more attributes to the engine configuration -> optimization profile, f16, explore config.set_flag()
 # - add pre / post processing
-# - add trt engine class
 # - make onxx_without_flow work without onnx-simplifier
 # - addded batch_inference
 # - refactor code based on official nvidia examples
@@ -41,6 +39,7 @@ import matplotlib.pyplot as plt
 # - reload output to torch for further processing
 # - fix negative values in flow_init
 # - improve output normalization
+# - refactor TRTEngine
 
 # (H, W)
 DIMS = (480, 640)

@@ -17,6 +17,7 @@ from tqdm import tqdm
 # - using gpu for inference in pytorch / onnx / tensorrt
 # - move data to gpu before inference
 # - role of batch_size while exporting the onnx model
+# - add tensorrt executionprovider => https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html
 
 # (H, W)
 DIMS = (480, 640)

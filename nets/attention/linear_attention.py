@@ -43,7 +43,9 @@ class LinearAttention(Module):
         KV = torch.einsum("nshd,nshv->nhdv", K, values)  # (S,D)' @ S,V
         Z = 1 / (torch.einsum("nlhd,nhd->nlh", Q, K.sum(dim=1)) + self.eps)
         queried_values = torch.einsum("nlhd,nhdv,nlh->nlhv", Q, KV, Z) * v_length
-
+        # # onxx to tensorrt conversion   
+        # intermediate = torch.einsum("nlhd,nhdv->nlhv", Q, KV)
+        # queried_values = torch.einsum("nlhv,nlh->nlhv", intermediate, Z) * v_length
         return queried_values.contiguous()
 
 

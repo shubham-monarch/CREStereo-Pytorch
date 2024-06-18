@@ -3,7 +3,7 @@
 import tensorrt as trt	
 import coloredlogs, logging
 
-TRT_LOGGER = trt.Logger(trt.Logger.INFO)
+TRT_LOGGER = trt.Logger(trt.Logger.VERBOSE)
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 # MAX_BATCH_SIZE = 1
 
@@ -17,7 +17,7 @@ def GiB(val):
 if __name__ == "__main__":
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
-	onnx_file_path = 'models/crestereo.onnx'	
+	onnx_file_path = 'models/m1.onnx'	
 	logging.debug(f"TensortRT version: {trt.__version__}")
 
 	builder = trt.Builder(TRT_LOGGER)
