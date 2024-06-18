@@ -130,23 +130,21 @@ class TRTEngine:
 			# output = np.reshape(data, (1, 2, 640, 640))[0]
 			return trt_inference_outputs
 
-	# def do_inference_v2(self, context, bindings, inputs, outputs, stream):
-	# 	# Transfer input data to the GPU.
-	# 	[cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
-	# 	# Run inference.
-	# 	context.execute_async_v2(bindings=bindings, stream_handle=stream.handle)
-	# 	# Transfer predictions back from the GPU.
-	# 	[cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
-	# 	# Synchronize the stream
-	# 	stream.synchronize()
-	# 	# Return only the host outputs.
-	# 	return [out.host for out in outputs]
+	def log_engine_io_details(self):
+		logging.warning(f"[INSPECTING TRT_ENGINE.inputs/outputs]")
+		for input in self.inputs:
+			name = input['name']
+			logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
+			
+		for output in self.outputs: 
+			name = output['name']
+			logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
+	
 
 
 
 
 def main():
-	
 	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
 	cv2.resizeWindow("TEST", (W, H))
 
@@ -161,107 +159,97 @@ def main():
 	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
 	path_trt_engine_without_flow = path_onnx_model_without_flow.replace(".onnx", ".trt")
 
-	# engine = generate_engine_from_onnx(onnx_model)
-	# trt.init_libnvinfer_plugins(None, "")
-	# engine = load_engine("models/crestereo.trt")
-	
 	trt_engine = TRTEngine(path_trt_engine)
-	# trt_engine.allocate_buffers()
+	trt_engine.log_engine_io_details()
 
-	logging.debug(f"[INSPECTING TRT_ENGINE.inputs/outputs]")
-	for input in trt_engine.inputs:
-		name = input['name']
-		logging.warning(f"{name}.shape: {input['shape']} {name}.dtype: {input['dtype']}") 
-		
-	for output in trt_engine.outputs: 
-		name = output['name']
-		logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
+	# trt_engine_without_flow = TRTEngine(path_trt_engine_without_flow)
+	# trt_engine_without_flow.log_engine_io_details("TRT_ENGINE_WITHOUT_FLOW")
 
 	# PREPARING INPUT DATA
-	left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
-	right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
+	# left_img = cv2.imread(f"{ZED_IMAGE_DIR}/left_18.png")
+	# right_img = cv2.imread(f"{ZED_IMAGE_DIR}/right_18.png")
 
-	(w ,h) = (W, H)
-	# imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
-	# imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
-	# flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
-	# flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
-	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
-	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
-	# imgL = cv2.resize(left_img, (h, w), interpolation=cv2.INTER_LINEAR)
-	# imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
-	flow_init = np.random.randn(1, 2, h//2, w//2).astype(np.float32) * 255.0
-	# flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
+	# (w ,h) = (W, H)
+	# # imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
+	# # imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	# # flow_init = np.random.random_sample((1, 2, h//2, w//2)).astype(np.float32)
+	# # flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
+	# imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	# imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	# # imgL = cv2.resize(left_img, (h, w), interpolation=cv2.INTER_LINEAR)
+	# # imgR = cv2.resize(right_img, (h, w), interpolation=cv2.INTER_LINEAR)
+	# flow_init = np.random.randn(1, 2, h//2, w//2).astype(np.float32) * 255.0
+	# # flow_init = np.zeros((1, 2, h//2, w//2)).astype(np.float32)
 	
-	# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-	# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-	flow_init = np.ascontiguousarray(flow_init)
+	# # imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+	# # imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	# imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	# imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	# flow_init = np.ascontiguousarray(flow_init)
 
-	logging.debug("[INPUT DATA FINAL SHAPES] => ")
-	logging.warning(f"imgL.shape: {imgL.shape}")
-	logging.warning(f"imgR.shape: {imgR.shape}")
-	logging.warning(f"flow_init.shape: {flow_init.shape}")
+	# logging.debug("[INPUT DATA FINAL SHAPES] => ")
+	# logging.warning(f"imgL.shape: {imgL.shape}")
+	# logging.warning(f"imgR.shape: {imgR.shape}")
+	# logging.warning(f"flow_init.shape: {flow_init.shape}")
 
-	# VISUALIZING INPUT DATA
-	left_image_cv = np.squeeze(imgL[:, :, :, :])
-	left_image_cv = utils.uint8_normalization(left_image_cv).transpose(1, 2, 0)
+	# # VISUALIZING INPUT DATA
+	# left_image_cv = np.squeeze(imgL[:, :, :, :])
+	# left_image_cv = utils.uint8_normalization(left_image_cv).transpose(1, 2, 0)
 	
-	right_image_cv = np.squeeze(imgR[:, :, :, :])
-	right_image_cv = utils.uint8_normalization(right_image_cv).transpose(1, 2, 0)
+	# right_image_cv = np.squeeze(imgR[:, :, :, :])
+	# right_image_cv = utils.uint8_normalization(right_image_cv).transpose(1, 2, 0)
 	
-	logging.warning(f"left_image_cv.shape: {left_image_cv.shape} left_image_cv.dtype: {left_image_cv.dtype}")
-	logging.warning(f"right_image_cv.shape: {right_image_cv.shape} right_image_cv.dtype: {right_image_cv.dtype}")
+	# logging.warning(f"left_image_cv.shape: {left_image_cv.shape} left_image_cv.dtype: {left_image_cv.dtype}")
+	# logging.warning(f"right_image_cv.shape: {right_image_cv.shape} right_image_cv.dtype: {right_image_cv.dtype}")
 
 	
-	cv2.imshow("TEST", cv2.hconcat([left_image_cv, right_image_cv]))
-	cv2.waitKey(0)
-	
-	
-
-	# LOADING PREPARED INPUT DATA TO TRT ENGINE 
-	# trt_engine.inputs[0]['host'] = imgL_dw2
-	# trt_engine.inputs[1]['host'] = imgR_dw2
-	trt_engine.inputs[0]['host'] = imgL
-	trt_engine.inputs[1]['host'] = imgR
-	trt_engine.inputs[2]['host'] = flow_init
-
-	# trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
-	# trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
-	# trt_engine.inputs[2]['host'] = np.ravel(flow_init)
+	# cv2.imshow("TEST", cv2.hconcat([left_image_cv, right_image_cv]))
+	# cv2.waitKey(0)
 	
 	
-	# RUNNING INFERENCE
-	trt_inference_outputs =  trt_engine.run_trt_inference()
-	logging.debug(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
-	logging.debug(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
 
-	# RESIZE TRT_INFERENCE_OUTPUT
-	output = trt_inference_outputs[0].reshape(1, 2, H, W)
-	output = np.squeeze(output[:, 0, :, :])
+	# # LOADING PREPARED INPUT DATA TO TRT ENGINE 
+	# # trt_engine.inputs[0]['host'] = imgL_dw2
+	# # trt_engine.inputs[1]['host'] = imgR_dw2
+	# trt_engine.inputs[0]['host'] = imgL
+	# trt_engine.inputs[1]['host'] = imgR
+	# trt_engine.inputs[2]['host'] = flow_init
+
+	# # trt_engine.inputs[0]['host'] = np.ravel(imgL_dw2)
+	# # trt_engine.inputs[1]['host'] = np.ravel(imgR_dw2)
+	# # trt_engine.inputs[2]['host'] = np.ravel(flow_init)
 	
-	# flattened_data_float32 = output.flatten()
-	# logging.warning(f"flattened_data_float32.min: {output.flatten().min()} flattened_data_float32.max: {output.flatten().max()}")
-	# plt.subplot(1,2,1)
-	logging.warning(f"[BEFORE OUTLIER FILTERING]output.shape: {output.shape} output.dtype: {output.dtype}")
-	output_outlier_filtered = utils.reject_outliers_2(output)
-	logging.warning(f"[AFTER OUTLIER FILTERING] output_outlier_filtered.shape: {output_outlier_filtered.shape} output_outlier_filtered.dtype: {output_outlier_filtered.dtype}")	
-
-	# utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
-	plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
-	output_uint8 = utils.uint8_normalization(output_outlier_filtered)
-	output_uint8 = np.where(output_uint8 != 0, output_uint8, np.nan)
-	logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
-
-	plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
 	
-	utils.plot_histograms(plt_datasets)
+	# # RUNNING INFERENCE
+	# trt_inference_outputs =  trt_engine.run_trt_inference()
+	# logging.debug(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
+	# logging.debug(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
 
-	cv2.imshow("TEST", output_uint8)
-	cv2.waitKey(0)
+	# # RESIZE TRT_INFERENCE_OUTPUT
+	# output = trt_inference_outputs[0].reshape(1, 2, H, W)
+	# output = np.squeeze(output[:, 0, :, :])
+	
+	# # flattened_data_float32 = output.flatten()
+	# # logging.warning(f"flattened_data_float32.min: {output.flatten().min()} flattened_data_float32.max: {output.flatten().max()}")
+	# # plt.subplot(1,2,1)
+	# logging.warning(f"[BEFORE OUTLIER FILTERING]output.shape: {output.shape} output.dtype: {output.dtype}")
+	# output_outlier_filtered = utils.reject_outliers_2(output)
+	# logging.warning(f"[AFTER OUTLIER FILTERING] output_outlier_filtered.shape: {output_outlier_filtered.shape} output_outlier_filtered.dtype: {output_outlier_filtered.dtype}")	
 
-	plt.close()
+	# # utils.plot_histogram(output_outlier_filtered, 'output_outlier_filtered', bins=20, range=[0,1])
+	# plt_datasets.append([output_outlier_filtered, 'output_outlier_filtered', 20, [0.,1.]])
+	# output_uint8 = utils.uint8_normalization(output_outlier_filtered)
+	# output_uint8 = np.where(output_uint8 != 0, output_uint8, np.nan)
+	# logging.warning(f"output_uint8.shape: {output_uint8.shape} output_uint8.dtype: {output_uint8.dtype}")
+
+	# plt_datasets.append([output_uint8, 'output_uint8', 255, [0,255]])
+	
+	# utils.plot_histograms(plt_datasets)
+
+	# cv2.imshow("TEST", output_uint8)
+	# cv2.waitKey(0)
+
+	# plt.close()
 	
 if __name__ == '__main__':
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
