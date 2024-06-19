@@ -68,8 +68,8 @@ def main(num_frames):
 	# sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
 	# sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
 	
-	sess_crestereo = ort.InferenceSession('models/crestereo_dynamic.onnx')
-	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow_dynamic.onnx')
+	sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
+	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
 
 	# logging.warning(os.listdir(ZED_IMAGE_DIR))
 

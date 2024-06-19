@@ -26,9 +26,24 @@ if __name__ == "__main__":
 	network = builder.create_network(EXPLICIT_BATCH)
 	# builder.max_batch_size = MAX_BATCH_SIZE
 	
+	logging.debug(f"network.num_layers: {network.num_layers}")
+
 	config = builder.create_builder_config()
 	# config.max_workspace_size = GiB(1) => deprecated
-	config.set_flag(trt.BuilderFlag.FP16)
+	
+	# if builder.platform_has_fast_fp16:
+	# 	logging.warning("build.platform_has_fp16 is True")
+	# 	config.set_flag(trt.BuilderFlag.FP16)
+	# else:
+	# 	logging.warning("build.platform_has_fp16 is False")
+	
+	if builder.platform_has_tf32:
+		logging.warning("build.platform_has_tf32 is True")
+		config.set_flag(trt.BuilderFlag.TF32)	
+	else:
+		logging.warning("build.platform_has_tf32 is False")
+		
+	
 	# config.set_flag(trt.BuilderFlag.OBEY_PRECISION_CONSTRAINTS)
 	config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, GiB(1))
 	
@@ -46,7 +61,7 @@ if __name__ == "__main__":
 	logging.warning('Building the TensorRT engine.  This would take a while...')
 	serialized_engine = builder.build_serialized_network(network, config)
 	if serialized_engine is not None:
-			engine = runtime.deserialize_cuda_engine(serialized_engine)
+			# engine = runtime.deserialize_cuda_engine(serialized_engine)
 			engine_file_path = onnx_file_path.replace(".onnx", ".trt")
 			logging.debug(f"engine_file_path: {engine_file_path}")
 			with open(engine_file_path, "wb") as f:

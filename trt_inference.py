@@ -22,10 +22,7 @@ import time
 # TO-DO
 # - using polygraphy for quick onnx model checking
 # - refer official nvidia docs for best practices
-# - explore onnx-graphsurgeon and polygraphy 
-# - checck pip install trt-cu11
-# - tinker with cudnn version 
-# - change cuda version to 12.1 
+# - explore onnx-graphsurgeon / polygraphy 
 # - read onnxsim => removes unsupported operations -> both python / cli apis
 # - intergrate onnxsimp api to code
 # - explore FPS() class -> YOLO -> https://github.com/sithu31296/PyTorch-ONNX-TRT/blob/master/examples/yolov4/yolov4/scripts/infer.py
@@ -42,9 +39,18 @@ import time
 # - explore dynamic shapess
 # - altenative to using two trt engines
 # - asynchronous vs synchronous inference
+# - check trt model inference accuracy
+# - config->setMemoryPoolLimit(MemoryPoolType::kTACTIC_SHARED_MEMORY, 48 << 10);
+# - try trtexec
+# - try onxx vs pytorch inference comparsion 
+# - using fp32 instead of tf32
+# - simplification using polygraphy instead of onnx-simp
+# - better normalization 
 
 
-TRT_LOGGER = trt.Logger(trt.Logger.INFO)
+
+TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+# TRT_LOGGER = trt.Logger()
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 runtime = trt.Runtime(TRT_LOGGER)
 ZED_IMAGE_DIR = "zed_input/images"
@@ -66,6 +72,8 @@ class TRTEngine:
 		assert len(self.inputs) > 0
 		assert len(self.outputs) > 0
 		assert len(self.bindings) > 0
+		logging.warning(f"type(self.engine): {type(self.engine)}")
+		logging.warning(f"(engine.num_layers): {(self.engine.num_layers)}")	
 		
 	def allocate_buffers(self):
 		self.inputs = []
@@ -141,6 +149,7 @@ def main(num_frames):
 	
 	# generating random frame indices
 	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
+	logging.info(f"frame_indices: {frame_indices}")
 	fps = trt_utils.FPS()
 
 	# onnx model paths
@@ -166,7 +175,7 @@ def main(num_frames):
 		# fps.start()
 		start_time = time.time()
 		rand_idx = random.randint(0, num_frames - 1)
-		# logging.warn(f"rand_idx: {rand_idx}")
+		logging.info(f"rand_idx: {rand_idx}")
 		left_img = cv2.imread(image_files_left[rand_idx])
 		right_img = cv2.imread(image_files_right[rand_idx])
 
@@ -213,54 +222,61 @@ def main(num_frames):
 		# resizing outputs
 		trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
 		trt_output = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
-		logging.warn(f"trt_output.shape: {trt_output.shape} trt_output.dtype: {trt_output.dtype}")
+		# logging.warn(f"trt_output.shape: {trt_output.shape} trt_output.dtype: {trt_output.dtype}")
 		
 		# fps.stop()
 		end_time = time.time()
 		frame_rate = 1 / (end_time - start_time)
-		logging.warning(f"Frame Rate: {frame_rate}")
+		logging.error(f"Frame Rate: {frame_rate}")
 
 		# DISPARITY NORMALIZATION
-		# approach one
+		# <---------------------------------------------------------------------------------->
+		# approach 1
 		disp_data = trt_output
 		disp_data_uint8 = utils.uint8_normalization(disp_data)
-		logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		# logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
 		plts.append((disp_data, 'disparity'))
 		plts.append((disp_data_uint8, 'uint8'))
 		# <---------------------------------------------------------------------------------->
-		
+		# approach 1.1
+		disp_data = trt_output
+		disp_data_uint8 = utils.uint8_normalization(disp_data)
+		# logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		plts.append((disp_data, 'disparity'))
+		plts.append((disp_data_uint8, 'uint8'))
+		# <---------------------------------------------------------------------------------->
 		# approach two
 		disp_data_norm_log = utils.normalization_log(disp_data)
 		disp_norm_log_uint8 = utils.uint8_normalization(disp_data_norm_log)
-		logging.warning(f"disp_data_norm_log.shape: {disp_data_norm_log.shape} disp_norm_log_uint8.shape: {disp_norm_log_uint8.shape}")
+		# logging.warning(f"disp_data_norm_log.shape: {disp_data_norm_log.shape} disp_norm_log_uint8.shape: {disp_norm_log_uint8.shape}")
 		plts.append((disp_data_norm_log, 'disparity [normalized log]'))
 		plts.append((disp_norm_log_uint8, 'uint8'))
-
+		# <---------------------------------------------------------------------------------->
 		# approach three
 		disp_norm_percentile = utils.normalization_percentile(disp_data, 2, 98)
 		disp_norm_percentile_uint8 = utils.uint8_normalization(disp_norm_percentile)	
-		logging.warning(f"disp_norm_percentile.shape: {disp_norm_percentile.shape} disp_norm_percentile_uint8.shape: {disp_norm_percentile_uint8.shape}")
+		# logging.warning(f"disp_norm_percentile.shape: {disp_norm_percentile.shape} disp_norm_percentile_uint8.shape: {disp_norm_percentile_uint8.shape}")
 		plts.append((disp_norm_percentile, 'disparity  [normalized percentile]'))
 		plts.append((disp_norm_percentile_uint8, 'uint8'))
-
+		# <---------------------------------------------------------------------------------->
 		imgL = np.squeeze(imgL[:, :, :, :]).transpose(1, 2, 0).astype(np.uint8)	
 		imgL = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
 
-		logging.info(f"imgL.shape: {imgL.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		# logging.info(f"imgL.shape: {imgL.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
 		
 		hconcat_uint8 = cv2.hconcat([ disp_data_uint8, disp_norm_log_uint8, disp_norm_percentile_uint8])
 		hconcat_imgL = cv2.hconcat([imgL, imgL, imgL])
 		
 		cv2.imshow("TEST", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
-		cv2.imwrite(f"frame_{i}.png", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		# cv2.imwrite(f"frame_{i}.png", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
 		
 		cv2.waitKey(0)
-		utils.plot_histograms(plts)
+		# utils.plot_histograms(plts)
 		
 		
 		
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
-	num_images = 1
+	num_images = 20
 	main(num_images)
