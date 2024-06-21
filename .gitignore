@@ -10,6 +10,11 @@ zed-depth-map/*
 zed_vs_model/*
 *.zip
 
+# tensorrt
+*.lock
+*.cache.lock
+*.cache
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
