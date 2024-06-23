@@ -75,6 +75,10 @@ class TRTEngine:
 		assert len(self.bindings) > 0
 		logging.warning(f"type(self.engine): {type(self.engine)}")
 		logging.warning(f"(engine.num_layers): {(self.engine.num_layers)}")	
+
+	def load_input(self, inputs):
+		for idx, input in enumerate(inputs): 
+			self.inputs[idx]['host'] = input
 		
 	def allocate_buffers(self):
 		self.inputs = []
@@ -130,6 +134,8 @@ class TRTEngine:
 			name = output['name']
 			logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
 		logging.warning(f"\n")
+
+	
 
 def main(num_frames):
 	# IMG DIMS
@@ -190,9 +196,11 @@ def main(num_frames):
 		imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 		
 		# loading input
-		trt_engine_without_flow.inputs[0]['host'] = imgL_dw2
-		trt_engine_without_flow.inputs[1]['host'] = imgR_dw2
+		# trt_engine_without_flow.inputs[0]['host'] = imgL_dw2
+		# trt_engine_without_flow.inputs[1]['host'] = imgR_dw2
 		
+		trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
+
 		# inference
 		trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
 		# logging.info(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
@@ -214,9 +222,11 @@ def main(num_frames):
 		flow_init = np.ascontiguousarray(flow_init)
 
 		# loading input	
-		trt_engine.inputs[0]['host'] = imgL
-		trt_engine.inputs[1]['host'] = imgR
-		trt_engine.inputs[2]['host'] = flow_init
+		# trt_engine.inputs[0]['host'] = imgL
+		# trt_engine.inputs[1]['host'] = imgR
+		# trt_engine.inputs[2]['host'] = flow_init
+
+		trt_engine.load_input([imgL, imgR, flow_init])
 
 		# inference
 		trt_inference_outputs =  trt_engine.run_trt_inference()
