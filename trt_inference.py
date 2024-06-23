@@ -143,9 +143,7 @@ class TRTEngine:
 			name = output['name']
 			logging.warning(f"{name}.shape: {output['shape']} {name}.dtype: {output['dtype']}")
 		logging.warning(f"\n")
-
-	
-
+		
 def main(num_frames):
 	# IMG DIMS
 	(H, W) = (480, 640)
@@ -188,68 +186,41 @@ def main(num_frames):
 		
 		plts = []
 
-		# READING IMAGES FROM DISK
-		# fps.start()
+		# START TIMER
 		start_time = time.time()
+		
+		# read left and right images
 		rand_idx = random.randint(0, num_frames - 1)
-		logging.info(f"rand_idx: {rand_idx}")
 		left_img = cv2.imread(image_files_left[rand_idx])
 		right_img = cv2.imread(image_files_right[rand_idx])
 
-		# < --------------- TRT_ENGINE_WITHOUT_FLOW ------------------- >	
-		# pre-processing input
-		# imgL_dw2 = cv2.resize(left_img, (W // 2, H // 2), interpolation=cv2.INTER_LINEAR)
-		# imgR_dw2 = cv2.resize(right_img, (W //2, H //2),  interpolation=cv2.INTER_LINEAR)
-		
-		# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-		# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-		
-		ppi_model1 = trt_engine_without_flow.pre_process_input([left_img, right_img], [(H // 2, W // 2), (H // 2, W // 2)])
-		# trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
-		# trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
+		# ENGINE ONE [without flow]	
+		ppi_model1 = trt_engine_without_flow.pre_process_input([left_img, right_img], 
+														 [(H // 2, W // 2), (H // 2, W // 2)])
+		# loading inputs to engine
 		trt_engine_without_flow.load_input(ppi_model1)
-		
-
 		# inference
 		trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
-		# logging.info(f"len(trt_inference_outputs): {len(trt_inference_outputs)}")
-		# logging.info(f"trt_inference_outputs[0].shape: {trt_inference_outputs[0].shape} trt_inference_outputs[0].dtype: {trt_inference_outputs[0].dtype}")
-
 		# resizing outputs
 		trt_output = trt_inference_outputs[0].reshape(1, 2, H // 2, W // 2)
-		logging.warning(f"trt_output.shape: {trt_output.shape}")
-		# disparity_data = np.squeeze(trt_output[:, 0, :, :])
 		
-		# < --------------- TRT_ENGINE ------------------- >	
-		# pre-processing input
-		# imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		# imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		# flow_init = trt_output
-		
-		# imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-		# imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-		# flow_init = np.ascontiguousarray(flow_init)
-
-		ppi_model2 = trt_engine.pre_process_input([left_img, right_img, trt_output], [(H, W), (H, W), None])
-
-		# trt_engine.load_input([imgL, imgR, flow_init])
+		# ENGINE TWO (with flow)	
+		ppi_model2 = trt_engine.pre_process_input([left_img, right_img, trt_output], 
+											[(H, W), (H, W), None])
+		# loading inputs to engine
 		trt_engine.load_input(ppi_model2)
-
 		# inference
 		trt_inference_outputs =  trt_engine.run_trt_inference()
-		
 		# resizing outputs
 		trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
 		trt_output = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
-		# logging.warn(f"trt_output.shape: {trt_output.shape} trt_output.dtype: {trt_output.dtype}")
 		
-		# fps.stop()
+		# END TIMERs
 		end_time = time.time()
 		frame_rate = 1 / (end_time - start_time)
 		logging.error(f"Frame Rate: {frame_rate}")
 
-		# DISPARITY NORMALIZATION
-		# <---------------------------------------------------------------------------------->
+		# OUTPUT NORMALIZATION
 		# approach 1
 		disp_data = trt_output
 		disp_data_uint8 = utils.uint8_normalization(disp_data)
