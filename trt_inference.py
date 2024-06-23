@@ -79,7 +79,16 @@ class TRTEngine:
 	def load_input(self, inputs):
 		for idx, input in enumerate(inputs): 
 			self.inputs[idx]['host'] = input
-		
+
+	def pre_process_input(self,inputs, dims):
+		pre_processed_inputs = [] 
+		for (input, dim) in zip (inputs, dims):
+			if dim is not None: 
+				input = cv2.resize(input, (dim[1], dim[0]), interpolation=cv2.INTER_LINEAR)
+				input = np.ascontiguousarray(input.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)		
+			pre_processed_inputs.append(input)
+		return pre_processed_inputs
+
 	def allocate_buffers(self):
 		self.inputs = []
 		self.outputs = []
@@ -189,17 +198,17 @@ def main(num_frames):
 
 		# < --------------- TRT_ENGINE_WITHOUT_FLOW ------------------- >	
 		# pre-processing input
-		imgL_dw2 = cv2.resize(left_img, (W // 2, H // 2), interpolation=cv2.INTER_LINEAR)
-		imgR_dw2 = cv2.resize(right_img, (W //2, H //2),  interpolation=cv2.INTER_LINEAR)
+		# imgL_dw2 = cv2.resize(left_img, (W // 2, H // 2), interpolation=cv2.INTER_LINEAR)
+		# imgR_dw2 = cv2.resize(right_img, (W //2, H //2),  interpolation=cv2.INTER_LINEAR)
 		
-		imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
-		imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		# imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+		# imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 		
-		# loading input
-		# trt_engine_without_flow.inputs[0]['host'] = imgL_dw2
-		# trt_engine_without_flow.inputs[1]['host'] = imgR_dw2
+		ppi_model1 = trt_engine_without_flow.pre_process_input([left_img, right_img], [(H // 2, W // 2), (H // 2, W // 2)])
+		# trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
+		# trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
+		trt_engine_without_flow.load_input(ppi_model1)
 		
-		trt_engine_without_flow.load_input([imgL_dw2, imgR_dw2])
 
 		# inference
 		trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
@@ -213,20 +222,18 @@ def main(num_frames):
 		
 		# < --------------- TRT_ENGINE ------------------- >	
 		# pre-processing input
-		imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		flow_init = trt_output
+		# imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		# imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
+		# flow_init = trt_output
 		
-		imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-		imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
-		flow_init = np.ascontiguousarray(flow_init)
+		# imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		# imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+		# flow_init = np.ascontiguousarray(flow_init)
 
-		# loading input	
-		# trt_engine.inputs[0]['host'] = imgL
-		# trt_engine.inputs[1]['host'] = imgR
-		# trt_engine.inputs[2]['host'] = flow_init
+		ppi_model2 = trt_engine.pre_process_input([left_img, right_img, trt_output], [(H, W), (H, W), None])
 
-		trt_engine.load_input([imgL, imgR, flow_init])
+		# trt_engine.load_input([imgL, imgR, flow_init])
+		trt_engine.load_input(ppi_model2)
 
 		# inference
 		trt_inference_outputs =  trt_engine.run_trt_inference()
@@ -278,10 +285,11 @@ def main(num_frames):
 						bins=100,
 						range=(0, 255)))
 		
-		imgL_ = np.squeeze(imgL[:, 0, :, :]).astype(np.uint8)
+		imgL_ = np.squeeze(ppi_model2[0][:, 0, :, :]).astype(np.uint8)
 	
 		# .transpose(1, 2, 0).astype(np.uint8)
-		logging.info(f"imgL_.shape: {imgL_.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		# 
+		logging.info(f"imgL_.shape: {imgL_.shape} clipped_disp_data_uint8.shape: {clipped_disp_data_uint8.shape}")
 		# logging.info(f"left_img.shape: {left_img.shape} clipped_disp_data_uint8.shape: {clipped_disp_data_uint8.shape}")
 		cv2.imshow("TEST", cv2.hconcat([imgL_, clipped_disp_data_uint8]))
 		cv2.waitKey(0)
