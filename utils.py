@@ -8,6 +8,7 @@ import os
 import shutil
 import time
 import math
+from collections import namedtuple
 
 # TO-DO=>
 # - jsonize config files
@@ -24,17 +25,22 @@ import matplotlib.pyplot as plt
 # 	plt.show()
 # 	plt.close()
 
-def plot_histograms(datasets, bins=[100, 100], ranges=[[0,1], [0,1]]):
+PLT = namedtuple('PLT', ['data', 'title', 'bins', 'range'])
+def plot_histograms(datasets):
 	plt.figure(figsize=(10, 10))
 	
 	rows = math.ceil(len(datasets) / 2)
 
-	# for i, (data, title, bin, range) in enumerate(datasets):
-	for i, (data, title) in enumerate(datasets):
+	for i, dataset in enumerate(datasets):
+		# data = dataset.data
+		# title = dataset.title
+		# bins = dataset.bins
+		# range = dataset.range
+		# title, *_ = dataset
 		plt.subplot(rows, 2, i+1)
-		# plt.hist(data.flatten(), bins=bin, range=range)
-		plt.hist(data.flatten())
-		plt.title(title)
+		
+		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
+		plt.title(dataset.title)
 		plt.xlabel('Pixel Value')
 		plt.ylabel('Frequency')
 

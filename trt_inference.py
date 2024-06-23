@@ -16,6 +16,7 @@ import fnmatch
 from tqdm import tqdm
 import random
 import time
+
 # ssimport pycuda.driver as cuda
 
 
@@ -41,11 +42,11 @@ import time
 # - asynchronous vs synchronous inference
 # - check trt model inference accuracy
 # - config->setMemoryPoolLimit(MemoryPoolType::kTACTIC_SHARED_MEMORY, 48 << 10);
-# - try trtexec
 # - try onxx vs pytorch inference comparsion 
 # - using fp32 instead of tf32
 # - simplification using polygraphy instead of onnx-simp
 # - better normalization 
+# - check onnx inference distribtion vs trt inference output distribution 
 
 
 
@@ -169,6 +170,7 @@ def main(num_frames):
 	trt_engine.log_engine_io_details(engine_name="TRT_ENGINE")
 	
 	for i in (frame_indices):
+		
 		plts = []
 
 		# READING IMAGES FROM DISK
@@ -235,42 +237,79 @@ def main(num_frames):
 		disp_data = trt_output
 		disp_data_uint8 = utils.uint8_normalization(disp_data)
 		# logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
-		plts.append((disp_data, 'disparity'))
-		plts.append((disp_data_uint8, 'uint8'))
-		# <---------------------------------------------------------------------------------->
-		# approach 1.1
-		disp_data = trt_output
-		disp_data_uint8 = utils.uint8_normalization(disp_data)
-		# logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
-		plts.append((disp_data, 'disparity'))
-		plts.append((disp_data_uint8, 'uint8'))
-		# <---------------------------------------------------------------------------------->
-		# approach two
-		disp_data_norm_log = utils.normalization_log(disp_data)
-		disp_norm_log_uint8 = utils.uint8_normalization(disp_data_norm_log)
-		# logging.warning(f"disp_data_norm_log.shape: {disp_data_norm_log.shape} disp_norm_log_uint8.shape: {disp_norm_log_uint8.shape}")
-		plts.append((disp_data_norm_log, 'disparity [normalized log]'))
-		plts.append((disp_norm_log_uint8, 'uint8'))
-		# <---------------------------------------------------------------------------------->
-		# approach three
-		disp_norm_percentile = utils.normalization_percentile(disp_data, 2, 98)
-		disp_norm_percentile_uint8 = utils.uint8_normalization(disp_norm_percentile)	
-		# logging.warning(f"disp_norm_percentile.shape: {disp_norm_percentile.shape} disp_norm_percentile_uint8.shape: {disp_norm_percentile_uint8.shape}")
-		plts.append((disp_norm_percentile, 'disparity  [normalized percentile]'))
-		plts.append((disp_norm_percentile_uint8, 'uint8'))
-		# <---------------------------------------------------------------------------------->
-		imgL = np.squeeze(imgL[:, :, :, :]).transpose(1, 2, 0).astype(np.uint8)	
-		imgL = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
+		# plts.append({"data": disp_data, "disparity": 10, "bins": 100})
+		# plts.append((disp_data_uint8, 'uint8', 10))s
+		logging.warning("DISP_DATA=>")
+		logging.info(f"mn: {disp_data.min()} mx: {disp_data.max()}")
+		logging.info(f"\n50-percentile: {np.percentile(disp_data, 50)} \
+						\n90-percentile: {np.percentile(disp_data, 90)} \
+						\n99-precentile: {np.percentile(disp_data, 99)}")
+		# logging.warning(f"[disp_data] mx: {disp_data.max()} mn: {disp_data.min()} [disp_data_uint8] mx: {disp_data_uint8.max()} mn: {disp_data_uint8.min()}")
+		plts.append(utils.PLT(data=disp_data, 
+						title='disparity',
+						bins=100, 
+						range=(disp_data.min(), disp_data.max())))
+		
 
-		# logging.info(f"imgL.shape: {imgL.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+
+		plts.append(utils.PLT(data=disp_data_uint8, title='uint8', bins=100, range=(0,255)))
 		
-		hconcat_uint8 = cv2.hconcat([ disp_data_uint8, disp_norm_log_uint8, disp_norm_percentile_uint8])
-		hconcat_imgL = cv2.hconcat([imgL, imgL, imgL])
+		percentile_99_disp = np.percentile(disp_data, 99) 
+		clipped_disp_data = np.clip(disp_data, 0.0,  percentile_99_disp)
+		clipped_disp_data_uint8 = utils.uint8_normalization(clipped_disp_data)
+
+		plts.append(utils.PLT(data=clipped_disp_data,
+						title='clipped disparity',
+						bins=100,
+						range=(clipped_disp_data.min(), clipped_disp_data.max())))
 		
-		cv2.imshow("TEST", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
-		# cv2.imwrite(f"frame_{i}.png", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		plts.append(utils.PLT(data=clipped_disp_data_uint8, 
+						title='clipped uint8',
+						bins=100,
+						range=(0, 255)))
 		
+		imgL_ = np.squeeze(imgL[:, 0, :, :]).astype(np.uint8)
+	
+		# .transpose(1, 2, 0).astype(np.uint8)
+		logging.info(f"imgL_.shape: {imgL_.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		# logging.info(f"left_img.shape: {left_img.shape} clipped_disp_data_uint8.shape: {clipped_disp_data_uint8.shape}")
+		cv2.imshow("TEST", cv2.hconcat([imgL_, clipped_disp_data_uint8]))
 		cv2.waitKey(0)
+		# cv2.imshow()
+		# # <---------------------------------------------------------------------------------->
+		# # approach 1.1
+		# disp_data = trt_output
+		# disp_data_uint8 = utils.uint8_normalization(disp_data)
+		# # logging.info(f"disp_data.shape: {disp_data.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		# plts.append((disp_data, 'disparity'))
+		# plts.append((disp_data_uint8, 'uint8'))
+		# # <---------------------------------------------------------------------------------->
+		# # approach two
+		# disp_data_norm_log = utils.normalization_log(disp_data)
+		# disp_norm_log_uint8 = utils.uint8_normalization(disp_data_norm_log)
+		# # logging.warning(f"disp_data_norm_log.shape: {disp_data_norm_log.shape} disp_norm_log_uint8.shape: {disp_norm_log_uint8.shape}")
+		# plts.append((disp_data_norm_log, 'disparity [normalized log]'))
+		# plts.append((disp_norm_log_uint8, 'uint8'))
+		# # <---------------------------------------------------------------------------------->
+		# # approach three
+		# disp_norm_percentile = utils.normalization_percentile(disp_data, 2, 98)
+		# disp_norm_percentile_uint8 = utils.uint8_normalization(disp_norm_percentile)	
+		# # logging.warning(f"disp_norm_percentile.shape: {disp_norm_percentile.shape} disp_norm_percentile_uint8.shape: {disp_norm_percentile_uint8.shape}")
+		# plts.append((disp_norm_percentile, 'disparity  [normalized percentile]'))
+		# plts.append((disp_norm_percentile_uint8, 'uint8'))
+		# # <---------------------------------------------------------------------------------->
+		# imgL = np.squeeze(imgL[:, :, :, :]).transpose(1, 2, 0).astype(np.uint8)	
+		# imgL = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
+
+		# # logging.info(f"imgL.shape: {imgL.shape} disp_data_uint8.shape: {disp_data_uint8.shape}")
+		
+		# hconcat_uint8 = cv2.hconcat([ disp_data_uint8, disp_norm_log_uint8, disp_norm_percentile_uint8])
+		# hconcat_imgL = cv2.hconcat([imgL, imgL, imgL])
+		
+		# cv2.imshow("TEST", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		# # cv2.imwrite(f"frame_{i}.png", cv2.vconcat([hconcat_imgL, hconcat_uint8]))
+		
+		# cv2.waitKey(0)
 		# utils.plot_histograms(plts)
 		
 		
@@ -278,5 +317,5 @@ def main(num_frames):
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
-	num_images = 20
+	num_images =20
 	main(num_images)
