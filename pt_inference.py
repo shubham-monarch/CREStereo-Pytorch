@@ -20,15 +20,17 @@ import zed_inference
 device = 'cuda'
 
 
+BASELINE = 0.13
+FOCAL_LENGTH = 1093.5
 
 ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ZED_VS_PT_DIR = "zed_vs_pt"
 
 PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_disparity"
-PT_PCL_DIR = f"{ZED_VS_PT_DIR}/pt_pcl"	
+PT_DEPTH_MAP_DIR = f"{ZED_VS_PT_DIR}/pt_depth_map"
 
-FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_PCL_DIR]
+FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_DEPTH_MAP_DIR]
 
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
@@ -104,14 +106,11 @@ def main(num_frames, H, W):
 		npy_name = img_name.replace('.png', '.npy')
 		np.save(f"{PT_DISPARITY_DIR}/{npy_name}", pred)
 
-		# logging.warning(f"imgL.shape: {imgL.shape} pred.shape: {pred.shape}")
+		# logging.warning(f"left.shape: {imgL.shape} pred.shape: {pred.shape}")
+
+		depth = utils.get_depth_data(pred, BASELINE, FOCAL_LENGTH)
+		np.save(f"{PT_DEPTH_MAP_DIR}/{npy_name}", depth)
 		
-		pcl, _ = disparity2pcl.main(imgL, imgR, pred)
-		np.save(f"{PT_PCL_DIR}/{npy_name}", pcl)
-
-		ply_name = img_name.replace('.png', '.ply')	
-		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{ply_name}", pcl)
-
 
 
 if __name__ == '__main__':

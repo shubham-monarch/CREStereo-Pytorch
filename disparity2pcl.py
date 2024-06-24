@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import coloredlogs, logging
 
 def _default_camera_params():
 
@@ -34,6 +35,7 @@ def _default_stereo_baseline():
 def _default_stereo_rotation():
 
     R = np.eye(3)
+
     return R
 
 def sm_frame2pcl(imgL, imgR, disparity, K, D, R, t,visualize=False):
@@ -47,26 +49,26 @@ def sm_frame2pcl(imgL, imgR, disparity, K, D, R, t,visualize=False):
     h, w = imgL.shape[:2]
     Q = cv2.stereoRectify(K,D,K,D,[w,h],R,t)[4]
     points = cv2.reprojectImageTo3D(disparity, Q, handleMissingValues=True)
-
+    
     # Remove points with invalid depth values
     mask = disparity > disparity.min()
-
+    
     # Filter points with valid depth
     points = points[mask]
     colors = imgL[mask]
 
     return points, colors
-
+    
 def main(imgL, imgR, disparity):
     K = _default_camera_params()
     D = _default_distortion_params()
     R = _default_stereo_rotation()
     t = _default_stereo_baseline()
-    # imgL = cv2.imread('/path/to/left/image')
-    # imgR = cv2.imread('/path/to/right/image')
-    # disparity = cv2.imread('/path/to/disparity/image')
-    points, colors = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
-    return points, colors
+    
+    # points, colors = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
+    # return points, colors
+    points, _ = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
+    return points, _
 
 if __name__=="__main__":
     K = _default_camera_params()

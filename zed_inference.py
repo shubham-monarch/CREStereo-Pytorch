@@ -34,7 +34,7 @@ def main(svo_file : str, num_frames : int) -> None:
 	
 	image_l = sl.Mat()
 	image_r = sl.Mat()
-	zed_pcl = sl.Mat()
+	depth_map = sl.Mat()
 
 	mean_depth_errors = []
 	variance_depth_errors= []
@@ -56,12 +56,11 @@ def main(svo_file : str, num_frames : int) -> None:
 			image_l.write( os.path.join(ZED_IMG_DIR , f'left_{i}.png') )
 			image_r.write( os.path.join(ZED_IMG_DIR , f'right_{i}.png') )
 			# writing pcl
-			zed.retrieve_measure(zed_pcl, sl.MEASURE.XYZRGBA, sl.MEM.CPU)
-			# saving as PLY
-			zed_pcl.write(os.path.join(ZED_PCL_DIR, f"pcl_{i}.ply"))
-			zed_pcl_arr = zed_pcl.get_data()
-			# saving as numpy array	
-			np.save(os.path.join(ZED_PCL_DIR, f"pcl_{i}.npy"), zed_pcl_arr)
+			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
+			zed_depth_map_data = depth_map.get_data()
+			# resizing from (1080, 1920) -> (480, 640)
+			zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480))
+			np.save(os.path.join(ZED_PCL_DIR, f"pcl_{i}.npy"), zed_depth_map_data)
 	zed.close()
 
 
