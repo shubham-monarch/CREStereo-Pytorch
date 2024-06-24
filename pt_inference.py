@@ -22,8 +22,11 @@ device = 'cuda'
 
 ZED_IMAGE_DIR = "zed_input/images"
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
+ZED_VS_PT_DIR = "zed_vs_pt"
+
 PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
-PT_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_pcl"	
+PT_PCL_DIR = f"{ZED_VS_PT_DIR}/pt_pcl"	
+
 FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_PCL_DIR]
 
 

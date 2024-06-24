@@ -10,6 +10,7 @@ zed-depth-map/*
 
 # custom folders
 onnx_vs_pytorch/*
+zed_vs_pt/** 
 
 zed_vs_model/*
 *.zip
