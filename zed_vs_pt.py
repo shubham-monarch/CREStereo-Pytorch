@@ -20,7 +20,7 @@ def main():
 	
 	utils.delete_folders(FOLDERS_TO_CREATE)
 	utils.create_folders(FOLDERS_TO_CREATE)
-	
+
 	zed_files = [] 
 	pt_files = [] 
 
@@ -35,7 +35,20 @@ def main():
 	for zed_file, pt_file in tqdm(zip(zed_files, pt_files), total = len(zed_files)):
 		zed_depth = np.load(zed_file)
 		pt_depth = np.load(pt_file)
-		# error = zed_depth - pt_depth
+
+		zed_depth[zed_depth > 10] = np.nan
+		pt_depth[pt_depth > 10] = np.nan
+		
+		# plts = []
+		# plts.append(utils.PLT(data=zed_depth, 
+		# 				title='ZED DEPTH MAP',
+		# 				bins=100, 
+		# 				range=(zed_depth.min(), zed_depth.max())))
+		# plts.append(utils.PLT(data=pt_depth, 
+		# 				title='PT DEPTH MAP',
+		# 				bins=100, 
+		# 				range=(pt_depth.min(), pt_depth.max())))		
+		
 		error = pt_depth - zed_depth
 		npy_filename = os.path.basename(zed_file)
 		png_filename = npy_filename.replace('.npy', '.png')	

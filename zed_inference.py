@@ -58,8 +58,16 @@ def main(svo_file : str, num_frames : int) -> None:
 			# writing pcl
 			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
 			zed_depth_map_data = depth_map.get_data()
+			# logging.warning(f"zed_depth_map_data.shape: {zed_depth_map_data.shape} zed_depth_map_data.dtype: {zed_depth_map_data.dtype}")
+			num_nans = np.sum(np.isnan(zed_depth_map_data))
+			# logging.warning(f"[Before resizing] Number of NaN values in zed_depth_map_data: {num_nans}")
 			# resizing from (1080, 1920) -> (480, 640)
-			zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480))
+
+			zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480), interpolation=cv2.INTER_NEAREST)
+			num_nans = np.sum(np.isnan(zed_depth_map_data))
+			# logging.warning(f"[After resizing] Number of NaN values in zed_depth_map_data after resizing: {num_nans}")
+
+
 			np.save(os.path.join(ZED_PCL_DIR, f"pcl_{i}.npy"), zed_depth_map_data)
 	zed.close()
 
