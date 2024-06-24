@@ -96,13 +96,14 @@ def main(num_frames, H, W):
 		imgR = cv2.resize(right_img	, (W, H), interpolation=cv2.INTER_LINEAR)
 
 		pred = INFERENCE(imgL, imgR)
-		np.save(f"{PT_DISPARITY_DIR}/frame_{i}.npy", pred)
+		img_name = os.path.basename(image_files_left[i])
+		np.save(f"{PT_DISPARITY_DIR}/{img_name}", pred)
 
 		# logging.warning(f"imgL.shape: {imgL.shape} pred.shape: {pred.shape}")
 
 		pcl, _ = disparity2pcl.main(imgL, imgR, pred)
-		np.save(f"{PT_PCL_DIR}/frame_{i}.npy", pcl)
-		utils.save_npy_as_ply(f"{PT_PCL_DIR}/frame_{i}.ply", pcl)
+		np.save(f"{PT_PCL_DIR}/{img_name}.npy", pcl)
+		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{img_name}.ply", pcl)
 
 
 

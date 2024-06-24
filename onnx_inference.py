@@ -88,9 +88,6 @@ def main(num_frames, H,  W):
 	frame_rates = []
 	
 	for i in tqdm(range(num_frames)):
-		# rand_idx = random.randint(0, num_frames - 1)
-		# logging.warn(f"rand_idx: {rand_idx}")
-		
 		left_img = cv2.imread(image_files_left[i])
 		right_img = cv2.imread(image_files_right[i])
 
@@ -100,7 +97,6 @@ def main(num_frames, H,  W):
 		start_time = time.time()
 		
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
-		# np.save(f"{ONNX_DISPARITY_DIR}/frame_{i}.npy", model_inference)
 		# extracting image name from the input left image
 		img_name = os.path.basename(image_files_left[i])
 		np.save(f"{ONNX_DISPARITY_DIR}/{img_name}.npy", model_inference)
@@ -108,8 +104,6 @@ def main(num_frames, H,  W):
 		# logging.warning(f"left.shape: {left.shape} model_inference.shape: {model_inference.shape}")
 
 		pcl, _ = disparity2pcl.main(left, right, model_inference)
-		# np.save(f"{ONNX_PCL_DIR}/frame_{i}.npy", pcl)
-		# utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/frame_{i}.ply", pcl)
 		np.save(f"{ONNX_PCL_DIR}/{img_name}.npy", pcl)
 		utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/{img_name}.ply", pcl)
 
