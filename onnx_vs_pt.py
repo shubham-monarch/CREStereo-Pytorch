@@ -83,7 +83,10 @@ def main():
     utils.create_folders(FOLDERS_TO_CREATE)
     
     for i in tqdm(range(len(pt_files))):
-        visualize_and_save_disparity_comparisons(pt_files[i], onnx_files[i], f"{ONNX_VS_PYTORCH_PLOTS}/frame_{i}.png")
+        npy_filename = os.path.basename(pt_files[i])
+        png_filename = npy_filename.replace('.npy', '.png')
+        # logging.warn(f"file_name: {npy_filename} png_filename: {png_filename}")    
+        visualize_and_save_disparity_comparisons(pt_files[i], onnx_files[i], f"{ONNX_VS_PYTORCH_PLOTS}/{png_filename}")
     
 if __name__ == "__main__": 
     coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger

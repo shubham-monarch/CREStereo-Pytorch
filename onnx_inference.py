@@ -100,7 +100,8 @@ def main(num_frames, H,  W):
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
 		# extracting image name from the input left image
 		img_name = os.path.basename(image_files_left[i])
-		np.save(f"{ONNX_DISPARITY_DIR}/{img_name}.npy", model_inference)
+		npy_name = img_name.replace('.png', '.npy')
+		np.save(f"{ONNX_DISPARITY_DIR}/{npy_name}", model_inference)
 		
 		# logging.warning(f"left.shape: {left.shape} model_inference.shape: {model_inference.shape}")
 

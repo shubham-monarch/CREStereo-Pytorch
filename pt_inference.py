@@ -25,7 +25,7 @@ ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ZED_VS_PT_DIR = "zed_vs_pt"
 
-PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
+PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_disparity"
 PT_PCL_DIR = f"{ZED_VS_PT_DIR}/pt_pcl"	
 
 FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_PCL_DIR]
@@ -101,13 +101,16 @@ def main(num_frames, H, W):
 
 		pred = INFERENCE(imgL, imgR)
 		img_name = os.path.basename(image_files_left[i])
-		np.save(f"{PT_DISPARITY_DIR}/{img_name}", pred)
+		npy_name = img_name.replace('.png', '.npy')
+		np.save(f"{PT_DISPARITY_DIR}/{npy_name}", pred)
 
 		# logging.warning(f"imgL.shape: {imgL.shape} pred.shape: {pred.shape}")
-
+		
 		pcl, _ = disparity2pcl.main(imgL, imgR, pred)
-		np.save(f"{PT_PCL_DIR}/{img_name}.npy", pcl)
-		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{img_name}.ply", pcl)
+		np.save(f"{PT_PCL_DIR}/{npy_name}", pcl)
+
+		ply_name = img_name.replace('.png', '.ply')	
+		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{ply_name}", pcl)
 
 
 
