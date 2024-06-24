@@ -61,12 +61,24 @@ def visualize_and_save_disparity_comparisons(pt_file_path, onnx_file_path, save_
     plt.close()
 
 def main():
-    pt_files = [os.path.join(pt_inference.PT_INFERENCES_DIR, f) for f in os.listdir(pt_inference.PT_INFERENCES_DIR)]
-    onnx_files = [os.path.join(onnx_inference.ONNX_DISPARITY_DIR, f) for f in os.listdir(onnx_inference.ONNX_DISPARITY_DIR)]
-    
-    # utils.delete_folders([ONNX_VS_PYTORCH_PLOTS])
-    # utils.create_folders([ONNX_VS_PYTORCH_PLOTS])
 
+    pt_files = [] 
+    onnx_files = []
+    
+    try:
+        pt_files = [os.path.join(pt_inference.PT_DISPARITY_DIR, f) for f in os.listdir(pt_inference.PT_DISPARITY_DIR)]
+    except Exception as e:
+        logging.error(f"Error accessing PT_DISPARITY_DIR: {e}")
+        
+    try:
+        onnx_files = [os.path.join(onnx_inference.ONNX_DISPARITY_DIR, f) for f in os.listdir(onnx_inference.ONNX_DISPARITY_DIR)]
+    except Exception as e:
+        logging.error(f"Error accessing ONNX_DISPARITY_DIR: {e}")
+
+    assert(len(pt_files) > 0), "No disparity maps found in PT_DISPARITY_DIR"
+    assert(len(onnx_files) > 0), "No disparity maps found in ONNX_DISPARITY_DIR"
+    assert(len(pt_files) == len(onnx_files)), "Number of PT and ONNX disparity maps should be equal"
+    
     utils.delete_folders(FOLDERS_TO_CREATE)
     utils.create_folders(FOLDERS_TO_CREATE)
     

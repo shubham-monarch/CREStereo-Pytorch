@@ -14,6 +14,7 @@ import utils
 import coloredlogs, logging
 import sys
 import testing
+import disparity2pcl
 
 device = 'cuda'
 
@@ -21,8 +22,9 @@ device = 'cuda'
 
 ZED_IMAGE_DIR = "zed_input/images"
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
-PT_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
-FOLDERS_TO_CREATE = [PT_INFERENCES_DIR]
+PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
+PT_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_pcl"	
+FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_PCL_DIR]
 
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
@@ -94,7 +96,14 @@ def main(num_frames, H, W):
 		imgR = cv2.resize(right_img	, (W, H), interpolation=cv2.INTER_LINEAR)
 
 		pred = INFERENCE(imgL, imgR)
-		np.save(f"{PT_INFERENCES_DIR}/frame_{i}.npy", pred)
+		np.save(f"{PT_DISPARITY_DIR}/frame_{i}.npy", pred)
+
+		# logging.warning(f"imgL.shape: {imgL.shape} pred.shape: {pred.shape}")
+
+		pcl, _ = disparity2pcl.main(imgL, imgR, pred)
+		np.save(f"{PT_PCL_DIR}/frame_{i}.npy", pcl)
+		utils.save_npy_as_ply(f"{PT_PCL_DIR}/frame_{i}.ply", pcl)
+
 
 
 if __name__ == '__main__':
