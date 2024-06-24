@@ -11,17 +11,13 @@ ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ONNX_VS_PYTORCH_PLOTS = f"{ONNX_VS_PYTORCH_DIR}/plots"
 PT_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
 ONNX_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_inferences"
-
+FOLDERS_TO_CREATE = [ONNX_VS_PYTORCH_PLOTS]
 
 
 import coloredlogs, logging
 import os
 import numpy as np 
 import matplotlib.pyplot as plt
-
-ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
-PT_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
-ONNX_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_inferences"
 
 
 def visualize_and_save_disparity_comparisons(pt_file_path, onnx_file_path, save_path):
@@ -70,9 +66,12 @@ def main():
     pt_files = [os.path.join(PT_INFERENCES_DIR, f) for f in os.listdir(PT_INFERENCES_DIR)]
     onnx_files = [os.path.join(ONNX_INFERENCES_DIR, f) for f in os.listdir(ONNX_INFERENCES_DIR)]
     
-    utils.delete_folders([ONNX_VS_PYTORCH_PLOTS])
-    utils.create_folders([ONNX_VS_PYTORCH_PLOTS])
+    # utils.delete_folders([ONNX_VS_PYTORCH_PLOTS])
+    # utils.create_folders([ONNX_VS_PYTORCH_PLOTS])
 
+    utils.delete_folders(FOLDERS_TO_CREATE)
+    utils.create_folders(FOLDERS_TO_CREATE)
+    
     for i in range(len(pt_files)):
         visualize_and_save_disparity_comparisons(pt_files[i], onnx_files[i], f"{ONNX_VS_PYTORCH_PLOTS}/frame_{i}.png")
     

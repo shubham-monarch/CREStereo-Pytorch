@@ -97,32 +97,8 @@ def main(num_frames, H,  W):
 		
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
 		np.save(f"{ONNX_INFERENCES_DIR}/frame_{i}.npy", model_inference)
-		# logging.info(f"Saving {i}th frame to {ONNX_INFERENCES_DIR}/frame_{i}.npy")
-		# logging.warning(f"model_inference.min(): {model_inference.min()} model_inference.max(): {model_inference.max()}")
-		# logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
-		# model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
-		# logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
-		# model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
-
-		# end_time = time.time()
-		# inference_time = end_time - start_time
-		# frame_rate = 1 / inference_time
-		# frame_rates.append(frame_rate)
-
-		# logging.warn()
-		# visualizing the results
-		# cv2.imshow("TEST", left)
-		# cv2.waitKey(0)
-		# cv2.imshow("TEST", model_infereence_depth_map_unit8)
-		# cv2.waitKey(0)
-		# cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
-		# cv2.waitKey(0)	
-	
-	# plt.plot(frame_rates)
-	# plt.xlabel('Image index')
-	# plt.ylabel('Frame rate (frames per second)')
-	# plt.title('ONNX model inference frame rate')
-	# plt.show()
+		
+		
 
 	cv2.destroyAllWindows()
 
