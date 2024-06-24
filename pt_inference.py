@@ -15,12 +15,13 @@ import coloredlogs, logging
 import sys
 import testing
 import disparity2pcl
+import zed_inference
 
 device = 'cuda'
 
 
 
-ZED_IMAGE_DIR = "zed_input/images"
+ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ZED_VS_PT_DIR = "zed_vs_pt"
 
@@ -89,7 +90,7 @@ def main(num_frames, H, W):
 	image_files_right.sort()
 
 	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
-	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
+	assert(len(image_files_left) >= num_frames), "Number of frames should be less than total number of images"
 	
 	for i in tqdm(range(num_frames)):
 		left_img = cv2.imread(image_files_left[i])

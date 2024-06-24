@@ -13,6 +13,7 @@ import time
 from tqdm import tqdm
 import disparity2pcl
 import open3d as o3d
+import zed_inference
 
 # TO-DO -> 
 # - calculate frame rate -> pytorch vs onnx vs tensorrt
@@ -24,11 +25,11 @@ import open3d as o3d
 # (H, W)
 # DIMS = (480, 640)
 # H,W = DIMS
-ZED_IMAGE_DIR = "zed_input/images"
+ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR 
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ONNX_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_disparity"
-ONNX_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_pcl"
-FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR, ONNX_PCL_DIR]
+# ONNX_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_pcl"
+FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR]
 
 
 def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
@@ -84,7 +85,7 @@ def main(num_frames, H,  W):
 
 
 	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
-	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
+	assert(len(image_files_left) >= num_frames), "Number of frames should be less than total number of images"
 	frame_rates = []
 	
 	for i in tqdm(range(num_frames)):
@@ -103,9 +104,9 @@ def main(num_frames, H,  W):
 		
 		# logging.warning(f"left.shape: {left.shape} model_inference.shape: {model_inference.shape}")
 
-		pcl, _ = disparity2pcl.main(left, right, model_inference)
-		np.save(f"{ONNX_PCL_DIR}/{img_name}.npy", pcl)
-		utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/{img_name}.ply", pcl)
+		# pcl, _ = disparity2pcl.main(left, right, model_inference)
+		# np.save(f"{ONNX_PCL_DIR}/{img_name}.npy", pcl)
+		# utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/{img_name}.ply", pcl)
 
 	
 
