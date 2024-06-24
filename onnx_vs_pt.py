@@ -6,19 +6,17 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt
 import utils
-
-ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
-ONNX_VS_PYTORCH_PLOTS = f"{ONNX_VS_PYTORCH_DIR}/plots"
-PT_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_inferences"
-ONNX_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_inferences"
-FOLDERS_TO_CREATE = [ONNX_VS_PYTORCH_PLOTS]
-
-
 import coloredlogs, logging
 import os
 import numpy as np 
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+import onnx_inference
+import pt_inference
 
+
+ONNX_VS_PYTORCH_PLOTS = f"{onnx_inference.ONNX_VS_PYTORCH_DIR}/plots_onnx_vs_pt"
+FOLDERS_TO_CREATE = [ONNX_VS_PYTORCH_PLOTS]
 
 def visualize_and_save_disparity_comparisons(pt_file_path, onnx_file_path, save_path):
     # Load the disparity maps
@@ -57,14 +55,14 @@ def visualize_and_save_disparity_comparisons(pt_file_path, onnx_file_path, save_
     plt.savefig(save_path)
     
     # Optionally display the plot
-    plt.show()
+    # plt.show()
     
     # Close the plot to free up memory
     plt.close()
 
 def main():
-    pt_files = [os.path.join(PT_INFERENCES_DIR, f) for f in os.listdir(PT_INFERENCES_DIR)]
-    onnx_files = [os.path.join(ONNX_INFERENCES_DIR, f) for f in os.listdir(ONNX_INFERENCES_DIR)]
+    pt_files = [os.path.join(pt_inference.PT_INFERENCES_DIR, f) for f in os.listdir(pt_inference.PT_INFERENCES_DIR)]
+    onnx_files = [os.path.join(onnx_inference.ONNX_DISPARITY_DIR, f) for f in os.listdir(onnx_inference.ONNX_DISPARITY_DIR)]
     
     # utils.delete_folders([ONNX_VS_PYTORCH_PLOTS])
     # utils.create_folders([ONNX_VS_PYTORCH_PLOTS])
@@ -72,7 +70,7 @@ def main():
     utils.delete_folders(FOLDERS_TO_CREATE)
     utils.create_folders(FOLDERS_TO_CREATE)
     
-    for i in range(len(pt_files)):
+    for i in tqdm(range(len(pt_files))):
         visualize_and_save_disparity_comparisons(pt_files[i], onnx_files[i], f"{ONNX_VS_PYTORCH_PLOTS}/frame_{i}.png")
     
 if __name__ == "__main__": 
