@@ -23,10 +23,12 @@ from tqdm import tqdm
 DIMS = (480, 640)
 H,W = DIMS
 ZED_IMAGE_DIR = "zed_input/images"
+ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
+ONNX_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_inferences"
+FOLDERS_TO_CREATE = [ONNX_INFERENCES_DIR]
 
 
-def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):	
-	(h,w) = img_dims
+def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
 	
 	# Get onnx model layer names (see convert_to_onnx.py for what these are)
 	input1_name = model.get_inputs()[0].name
@@ -34,6 +36,8 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 	input3_name = model.get_inputs()[2].name
 	output_name = model.get_outputs()[0].name
 	
+	(h,w) = img_shape 
+
 	# Transpose the dimensions and add a batch dimension
 	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
 	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
@@ -49,21 +53,26 @@ def inference(left_img, right_img, model, model_no_flow, img_dims=(480, 640)):
 	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
 	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
 	
+	# logging.debug("Running no-flow model!")
 	pred_flow_dw2 = model_no_flow.run(
 		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
 	
 	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
 	# logging.warning(f"pred_flow_dw2[0].shape: {pred_flow_dw2[0].shape}")
 
+	# logging.debug("Running with flow model!")
 	pred_disp = model.run([output_name], {
 						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
 	
-	logging.warning(f"output shape after inference => {pred_disp.shape}")
+	# logging.warning(f"output shape after inference => {pred_disp.shape}")
 	return np.squeeze(pred_disp[:, 0, :, :])
 
 def main(num_frames):
-	cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	cv2.resizeWindow("TEST", (2 * W, H))
+	# cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
+	# cv2.resizeWindow("TEST", (2 * W, H))
+
+	utils.delete_folders(FOLDERS_TO_CREATE)
+	utils.create_folders(FOLDERS_TO_CREATE)
 
 	# sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
 	# sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
@@ -87,13 +96,12 @@ def main(num_frames):
 	frame_rates = []
 	
 	# generating random frame indices
-	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
-
-	for i in (frame_indices):
-		rand_idx = random.randint(0, num_frames - 1)
+	# frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
+	for i in tqdm(range(num_frames)):
+		# rand_idx = random.randint(0, num_frames - 1)
 		# logging.warn(f"rand_idx: {rand_idx}")
-		left_img = cv2.imread(image_files_left[rand_idx])
-		right_img = cv2.imread(image_files_right[rand_idx])
+		left_img = cv2.imread(image_files_left[i])
+		right_img = cv2.imread(image_files_right[i])
 
 		left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
 		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
@@ -102,17 +110,19 @@ def main(num_frames):
 
 		start_time = time.time()
 		
-		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_dims=(480, 640))   
+		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
+		np.save(f"{ONNX_INFERENCES_DIR}/frame_{i}.npy", model_inference)
+		# logging.info(f"Saving {i}th frame to {ONNX_INFERENCES_DIR}/frame_{i}.npy")
 		# logging.warning(f"model_inference.min(): {model_inference.min()} model_inference.max(): {model_inference.max()}")
 		# logging.warning(f"model_inference.shape: {model_inference.shape} model_inference.dtype: {model_inference.dtype}") 
-		model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
+		# model_inference_depth_map_mono = utils.uint8_normalization(model_inference)
 		# logging.warning(f"model_inference_depth_map_mono.shape: {model_inference_depth_map_mono.shape} model_inference.dtype: {model_inference_depth_map_mono.dtype}") 
-		model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
+		# model_infereence_depth_map_unit8 = cv2.cvtColor(model_inference_depth_map_mono, cv2.COLOR_GRAY2BGR)
 
-		end_time = time.time()
-		inference_time = end_time - start_time
-		frame_rate = 1 / inference_time
-		frame_rates.append(frame_rate)
+		# end_time = time.time()
+		# inference_time = end_time - start_time
+		# frame_rate = 1 / inference_time
+		# frame_rates.append(frame_rate)
 
 		# logging.warn()
 		# visualizing the results
@@ -120,21 +130,21 @@ def main(num_frames):
 		# cv2.waitKey(0)
 		# cv2.imshow("TEST", model_infereence_depth_map_unit8)
 		# cv2.waitKey(0)
-		cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
-		cv2.waitKey(0)	
+		# cv2.imshow("TEST", cv2.hconcat([left, model_infereence_depth_map_unit8]))
+		# cv2.waitKey(0)	
 	
-	plt.plot(frame_rates)
-	plt.xlabel('Image index')
-	plt.ylabel('Frame rate (frames per second)')
-	plt.title('ONNX model inference frame rate')
-	plt.show()
+	# plt.plot(frame_rates)
+	# plt.xlabel('Image index')
+	# plt.ylabel('Frame rate (frames per second)')
+	# plt.title('ONNX model inference frame rate')
+	# plt.show()
 
 	cv2.destroyAllWindows()
 
 
 if __name__ == "__main__": 
 	
-	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
+	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
 	num_frames = 10
 	main(num_frames)	
