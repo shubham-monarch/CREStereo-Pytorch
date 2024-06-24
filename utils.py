@@ -128,6 +128,23 @@ def percentage_infinite_points(image):
 	percentage = (infinite_points / total_points) * 100
 	return percentage
 
+def save_npy_as_ply(ply_file: str, array : np.ndarray) -> None:
+	'''
+	Save a numpy array as a PLY file.
+	args:
+		ply_file: str: path to the PLY file
+		array: np.ndarray: the array to save
+	'''
+	with open(ply_file, 'w') as f:
+		f.write("ply\n")
+		f.write("format ascii 1.0\n")
+		f.write(f"element vertex {len(array)}\n")
+		f.write("property float x\n")
+		f.write("property float y\n")
+		f.write("property float z\n")
+		f.write("end_header\n")
+		for point in array:
+			f.write(f"{point[0]} {point[1]} {point[2]}\n")
 
 def delete_folders(folders):
 	for folder_path in folders:

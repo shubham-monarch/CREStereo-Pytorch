@@ -11,6 +11,8 @@ import random
 import re
 import time
 from tqdm import tqdm
+import disparity2pcl
+import open3d as o3d
 
 # TO-DO -> 
 # - calculate frame rate -> pytorch vs onnx vs tensorrt
@@ -24,8 +26,9 @@ from tqdm import tqdm
 # H,W = DIMS
 ZED_IMAGE_DIR = "zed_input/images"
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
-ONNX_INFERENCES_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_inferences"
-FOLDERS_TO_CREATE = [ONNX_INFERENCES_DIR]
+ONNX_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_disparity"
+ONNX_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_pcl"
+FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR, ONNX_PCL_DIR]
 
 
 def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
@@ -96,16 +99,20 @@ def main(num_frames, H,  W):
 		start_time = time.time()
 		
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
-		np.save(f"{ONNX_INFERENCES_DIR}/frame_{i}.npy", model_inference)
+		np.save(f"{ONNX_DISPARITY_DIR}/frame_{i}.npy", model_inference)
 		
-		
+		# logging.warning(f"left.shape: {left.shape} model_inference.shape: {model_inference.shape}")
 
-	cv2.destroyAllWindows()
+		pcl, _ = disparity2pcl.main(left, right, model_inference)
+		np.save(f"{ONNX_PCL_DIR}/frame_{i}.npy", pcl)
+		utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/frame_{i}.ply", pcl)
+
+	# cv2.destroyAllWindows()
 
 
 if __name__ == "__main__": 
 	
-	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
+	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
 	num_frames = 10
 	(H,W) = (480, 640)
