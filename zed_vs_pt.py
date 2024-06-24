@@ -50,9 +50,9 @@ def main():
 		# 				range=(pt_depth.min(), pt_depth.max())))		
 		
 		error = pt_depth - zed_depth
-		npy_filename = os.path.basename(zed_file)
-		png_filename = npy_filename.replace('.npy', '.png')	
-		utils.write_legend_plot(error, f"{ZED_VS_PT_PCL_DIR}/{png_filename}")
+		filename_npy = os.path.basename(zed_file)
+		filename_png = filename_npy.replace('.npy', '.png')	
+		utils.write_legend_plot(error, f"{ZED_VS_PT_PCL_DIR}/{filename_png}")
 
 if __name__ == "__main__":
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
