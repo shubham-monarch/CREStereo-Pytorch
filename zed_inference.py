@@ -5,6 +5,7 @@ import pyzed.sl as sl
 import random
 from tqdm import tqdm
 import os
+import numpy as np
 import cv2
 
 ZED_VS_PT_DIR = "zed_vs_pt"
@@ -42,11 +43,6 @@ def main(svo_file : str, num_frames : int) -> None:
 	runtime_parameters.enable_fill_mode	= True
 	
 	total_svo_frames = zed.get_svo_number_of_frames()
-	# logging.debug(f"Total number of frames in the svo file: {total_svo_frames}")	
-
-	# # setting cv2 window
-	# cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	# cv2.resizeWindow("TEST", 1000, 1000)
 	
 	assert num_frames <= total_svo_frames, "num_frames should be less than total_svo_frames"
 	
@@ -61,7 +57,11 @@ def main(svo_file : str, num_frames : int) -> None:
 			image_r.write( os.path.join(ZED_IMG_DIR , f'right_{i}.png') )
 			# writing pcl
 			zed.retrieve_measure(zed_pcl, sl.MEASURE.XYZRGBA, sl.MEM.CPU)
-			zed_pcl.write(os.path.join(ZED_PCL_DIR, f"pcl_{i}.ply") )
+			# saving as PLY
+			zed_pcl.write(os.path.join(ZED_PCL_DIR, f"pcl_{i}.ply"))
+			zed_pcl_arr = zed_pcl.get_data()
+			# saving as numpy array	
+			np.save(os.path.join(ZED_PCL_DIR, f"pcl_{i}.npy"), zed_pcl_arr)
 	zed.close()
 
 
