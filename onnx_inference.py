@@ -115,6 +115,6 @@ if __name__ == "__main__":
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
-	num_frames = 10
+	num_frames = 30
 	(H,W) = (480, 640)
 	main(num_frames, H, W)	

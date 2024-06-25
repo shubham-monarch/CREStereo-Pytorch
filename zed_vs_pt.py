@@ -7,6 +7,7 @@ import utils
 import os
 import numpy as np
 from tqdm import tqdm
+import cv2
 
 # ZED_DEP = zed_inference.ZED_PCL_DIR
 # PT_DEPTH_MAP_DIR = pt_inference.PT_DEPTH_MAP_DIR
@@ -36,20 +37,16 @@ def main():
 		zed_depth = np.load(zed_file)
 		pt_depth = np.load(pt_file)
 
+		zed_depth = utils.inf_filtering(zed_depth)
+		pt_depth = utils.inf_filtering(pt_depth)
+
 		zed_depth[zed_depth > 10] = np.nan
 		pt_depth[pt_depth > 10] = np.nan
 		
-		# plts = []
-		# plts.append(utils.PLT(data=zed_depth, 
-		# 				title='ZED DEPTH MAP',
-		# 				bins=100, 
-		# 				range=(zed_depth.min(), zed_depth.max())))
-		# plts.append(utils.PLT(data=pt_depth, 
-		# 				title='PT DEPTH MAP',
-		# 				bins=100, 
-		# 				range=(pt_depth.min(), pt_depth.max())))		
 		
 		error = pt_depth - zed_depth
+
+		
 		filename_npy = os.path.basename(zed_file)
 		filename_png = filename_npy.replace('.npy', '.png')	
 		utils.write_legend_plot(error, f"{ZED_VS_PT_PCL_DIR}/{filename_png}")

@@ -60,7 +60,7 @@ def main(svo_file : str, num_frames : int) -> None:
 			# writing depth-map
 			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
 			zed_depth_map_data = depth_map.get_data()
-			zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480), interpolation=cv2.INTER_NEAREST)
+			# zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480), interpolation=cv2.INTER_NEAREST)
 			np.save(os.path.join(ZED_DEPTH_MAP_DIR, f"depth_map_{i}.npy"), zed_depth_map_data)
 			# writing pointcloud
 			zed.retrieve_measure(pointcloud, sl.MEASURE.XYZRGBA, sl.MEM.CPU)
