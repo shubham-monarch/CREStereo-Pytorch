@@ -8,8 +8,8 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-ZED_PCL_DIR = zed_inference.ZED_PCL_DIR
-PT_DEPTH_MAP_DIR = pt_inference.PT_DEPTH_MAP_DIR
+# ZED_DEP = zed_inference.ZED_PCL_DIR
+# PT_DEPTH_MAP_DIR = pt_inference.PT_DEPTH_MAP_DIR
 
 ZED_VS_PT_DIR = "zed_vs_pt"
 ZED_VS_PT_PCL_DIR = f"{ZED_VS_PT_DIR}/depth_error"
@@ -24,8 +24,8 @@ def main():
 	zed_files = [] 
 	pt_files = [] 
 
-	zed_files = [os.path.join(ZED_PCL_DIR, f) for f in os.listdir(ZED_PCL_DIR) if f.endswith('.npy')]
-	pt_files = [os.path.join(PT_DEPTH_MAP_DIR, f) for f in os.listdir(PT_DEPTH_MAP_DIR) if f.endswith('.npy')]
+	zed_files = [os.path.join(zed_inference.ZED_DEPTH_MAP_DIR, f) for f in os.listdir(zed_inference.ZED_DEPTH_MAP_DIR) if f.endswith('.npy')]
+	pt_files = [os.path.join(pt_inference.PT_DEPTH_MAP_DIR, f) for f in os.listdir(pt_inference.PT_DEPTH_MAP_DIR) if f.endswith('.npy')]
 
 	zed_files = sorted(zed_files)
 	pt_files = sorted(pt_files)

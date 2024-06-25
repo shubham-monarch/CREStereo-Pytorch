@@ -128,13 +128,38 @@ def percentage_infinite_points(image):
 	percentage = (infinite_points / total_points) * 100
 	return percentage
 
-def save_npy_as_ply(ply_file: str, array : np.ndarray) -> None:
+# def save_npy_as_ply(ply_file: str, color : np.ndarray, array : np.ndarray) -> None:
+# 	'''
+# 	Save a numpy array as a PLY file.
+# 	args:
+# 		ply_file: str: path to the PLY file
+# 		array: np.ndarray: the array to save
+# 	'''
+# 	with open(ply_file, 'w') as f:
+# 		f.write("ply\n")
+# 		f.write("format ascii 1.0\n")
+# 		f.write(f"element vertex {len(array)}\n")
+# 		f.write("property float x\n")
+# 		f.write("property float y\n")
+# 		f.write("property float z\n")
+# 		f.write("end_header\n")
+# 		for point in array:
+# 			f.write(f"{point[0]} {point[1]} {point[2]}\n")
+
+def save_npy_as_ply(ply_file: str, array: np.ndarray, colors: np.ndarray) -> None:
+	# logging.warning(f"colors.shape: {colors.shape} colors.dtype: {colors.dtype}")
+	# logging.warning(f"colors[:30]: {colors[:30]}")
+	
 	'''
-	Save a numpy array as a PLY file.
+	Save a numpy array as a PLY file with color information.
 	args:
 		ply_file: str: path to the PLY file
-		array: np.ndarray: the array to save
+		array: np.ndarray: the array to save, expected to have shape (n, 3) with each row being [x, y, z]
+		colors: np.ndarray: the colors array, expected to have shape (n, 3) with each row being [r, g, b]
 	'''
+	if len(array) != len(colors):
+		raise ValueError("Array and colors must have the same length")
+
 	with open(ply_file, 'w') as f:
 		f.write("ply\n")
 		f.write("format ascii 1.0\n")
@@ -142,9 +167,16 @@ def save_npy_as_ply(ply_file: str, array : np.ndarray) -> None:
 		f.write("property float x\n")
 		f.write("property float y\n")
 		f.write("property float z\n")
+		# Add properties for color
+		f.write("property uchar red\n")
+		f.write("property uchar green\n")
+		f.write("property uchar blue\n")
 		f.write("end_header\n")
-		for point in array:
-			f.write(f"{point[0]} {point[1]} {point[2]}\n")
+		for point, color in zip(array, colors):
+			# Ensure color values are integers in the range [0, 255]
+			color = color.astype(int)
+			f.write(f"{point[0]} {point[1]} {point[2]} {color[0]} {color[1]} {color[2]}\n")
+
 
 def delete_folders(folders):
 	for folder_path in folders:

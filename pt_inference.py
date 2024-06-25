@@ -29,8 +29,9 @@ ZED_VS_PT_DIR = "zed_vs_pt"
 
 PT_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/pt_disparity"
 PT_DEPTH_MAP_DIR = f"{ZED_VS_PT_DIR}/pt_depth_map"
+PT_PCL_DIR = f"{ZED_VS_PT_DIR}/pt_pcl"	
 
-FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_DEPTH_MAP_DIR]
+FOLDERS_TO_CREATE = [PT_DISPARITY_DIR, PT_DEPTH_MAP_DIR,PT_PCL_DIR]
 
 
 #Ref: https://github.com/megvii-research/CREStereo/blob/master/test.py
@@ -110,6 +111,14 @@ def main(num_frames, H, W):
 
 		depth = utils.get_depth_data(pred, BASELINE, FOCAL_LENGTH)
 		np.save(f"{PT_DEPTH_MAP_DIR}/{npy_name}", depth)
+
+		points, colors = disparity2pcl.main(imgL, imgR, pred)	
+		# logging.warning(f"[pt_inference.py] colors.dtype: {colors.dtype} colors.shape: {colors.shape}")
+		# logging.warning(f"[pt_inference.py] colors[:30]: \n{colors[:30]}")
+		filename_ply = img_name.replace('.png', '.ply')
+		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{filename_ply}",  points, colors)
+
+
 		
 
 

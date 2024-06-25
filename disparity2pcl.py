@@ -57,6 +57,9 @@ def sm_frame2pcl(imgL, imgR, disparity, K, D, R, t,visualize=False):
     points = points[mask]
     colors = imgL[mask]
 
+    colors = cv2.normalize(colors, None, alpha = 0, beta = 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    # logging.warning(f"[sm_fram2pcl] colors.shape: {colors.shape} colors.dtype: {colors.dtype}")
+    # logging.warning(f"[sm_frame2pcl] colors[:40] \n {colors[:40]}")
     return points, colors
     
 def main(imgL, imgR, disparity):
@@ -67,15 +70,7 @@ def main(imgL, imgR, disparity):
     
     # points, colors = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
     # return points, colors
-    points, _ = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
-    return points, _
-
-if __name__=="__main__":
-    K = _default_camera_params()
-    D = _default_distortion_params()
-    R = _default_stereo_rotation()
-    t = _default_stereo_baseline()
-    imgL = cv2.imread('/path/to/left/image')
-    imgR = cv2.imread('/path/to/right/image')
-    disparity = cv2.imread('/path/to/disparity/image')
     points, colors = sm_frame2pcl(imgL, imgR, disparity, K, D, R, t, visualize=False)
+    return points, colors
+
+   

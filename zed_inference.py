@@ -11,9 +11,10 @@ import cv2
 ZED_VS_PT_DIR = "zed_vs_pt"
 
 ZED_IMG_DIR = f"{ZED_VS_PT_DIR}/zed_images"	
+ZED_DEPTH_MAP_DIR = f"{ZED_VS_PT_DIR}/zed_depth_maps"
 ZED_PCL_DIR = f"{ZED_VS_PT_DIR}/zed_pcl"
 
-FOLDERS_TO_CREATE = [ZED_PCL_DIR, ZED_IMG_DIR]
+FOLDERS_TO_CREATE = [ZED_PCL_DIR, ZED_IMG_DIR, ZED_DEPTH_MAP_DIR]
 
 
 def main(svo_file : str, num_frames : int) -> None: 	
@@ -35,6 +36,7 @@ def main(svo_file : str, num_frames : int) -> None:
 	image_l = sl.Mat()
 	image_r = sl.Mat()
 	depth_map = sl.Mat()
+	pointcloud = sl.Mat()
 
 	mean_depth_errors = []
 	variance_depth_errors= []
@@ -55,27 +57,22 @@ def main(svo_file : str, num_frames : int) -> None:
 			# writing images
 			image_l.write( os.path.join(ZED_IMG_DIR , f'left_{i}.png') )
 			image_r.write( os.path.join(ZED_IMG_DIR , f'right_{i}.png') )
-			# writing pcl
+			# writing depth-map
 			zed.retrieve_measure(depth_map, sl.MEASURE.DEPTH) # Retrieve depth
 			zed_depth_map_data = depth_map.get_data()
-			# logging.warning(f"zed_depth_map_data.shape: {zed_depth_map_data.shape} zed_depth_map_data.dtype: {zed_depth_map_data.dtype}")
-			num_nans = np.sum(np.isnan(zed_depth_map_data))
-			# logging.warning(f"[Before resizing] Number of NaN values in zed_depth_map_data: {num_nans}")
-			# resizing from (1080, 1920) -> (480, 640)
-
 			zed_depth_map_data = cv2.resize(zed_depth_map_data, (640, 480), interpolation=cv2.INTER_NEAREST)
-			num_nans = np.sum(np.isnan(zed_depth_map_data))
-			# logging.warning(f"[After resizing] Number of NaN values in zed_depth_map_data after resizing: {num_nans}")
-
-
-			np.save(os.path.join(ZED_PCL_DIR, f"pcl_{i}.npy"), zed_depth_map_data)
+			np.save(os.path.join(ZED_DEPTH_MAP_DIR, f"depth_map_{i}.npy"), zed_depth_map_data)
+			# writing pointcloud
+			zed.retrieve_measure(pointcloud, sl.MEASURE.XYZRGBA, sl.MEM.CPU)
+			pointcloud.write(os.path.join(ZED_PCL_DIR, f'pcl_{i}.ply') )
+	
 	zed.close()
 
 
 if __name__ == "__main__":
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	svo_file = "svo-files/front_2024-05-15-18-59-18.svo"
-	num_frames = 10
+	num_frames = 30
 	logging.warning(f"Running ZED inference for {num_frames} frames.")
 	main(svo_file, num_frames)
 	
