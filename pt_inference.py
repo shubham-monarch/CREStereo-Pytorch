@@ -99,13 +99,9 @@ def main(num_frames, H, W):
 		left_img = cv2.imread(image_files_left[i])
 		right_img = cv2.imread(image_files_right[i])
 
-		# logging.warning(f"left_img.shape: {left_img.shape} right_img.shape: {right_img.shape}")
-
-		# imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		# imgR = cv2.resize(right_img	, (W, H), interpolation=cv2.INTER_LINEAR)
 		imgL = left_img
 		imgR = right_img
-		
+
 		pred = INFERENCE(imgL, imgR)
 		img_name = os.path.basename(image_files_left[i])
 		npy_name = img_name.replace('.png', '.npy')
@@ -121,9 +117,6 @@ def main(num_frames, H, W):
 		# logging.warning(f"[pt_inference.py] colors[:30]: \n{colors[:30]}")
 		filename_ply = img_name.replace('.png', '.ply')
 		utils.save_npy_as_ply(f"{PT_PCL_DIR}/{filename_ply}",  points, colors)
-
-
-		
 
 
 if __name__ == '__main__':

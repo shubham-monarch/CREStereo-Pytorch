@@ -58,6 +58,10 @@ ZED_IMAGE_DIR = "zed_input/images"
 BASELINE = 0.13
 FOCAL_LENGTH = 1093.5
 
+TRT_INFERENCE_DIR = "trt_inference"
+FOLDERS_TO_CREATE = [TRT_INFERENCE_DIR]
+
+
 class TRTEngine:
 	def __init__(self, engine_path):
 		# self.logger = trt.logger(trt.Logger.INFO)
@@ -148,15 +152,14 @@ def main(num_frames):
 	# IMG DIMS
 	(H, W) = (480, 640)
 
-	# managing cv2 window
-	# cv2.namedWindow("TEST", cv2.WINDOW_NORMAL)
-	# cv2.resizeWindow("TEST", (2 * W, H))
-		
+	utils.delete_folders(FOLDERS_TO_CREATE)
+	utils.create_folders(FOLDERS_TO_CREATE)
+	
 	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
 	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
 	
 	image_files_left.sort()
-	image_files_right.sort()
+	image_files_right.sort() 	
 
 	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
 	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
@@ -182,7 +185,7 @@ def main(num_frames):
 	trt_engine = TRTEngine(path_trt_engine)
 	trt_engine.log_engine_io_details(engine_name="TRT_ENGINE")
 	
-	for i in (frame_indices):
+	for i in tqdm(frame_indices):
 		
 		plts = []
 
@@ -217,7 +220,7 @@ def main(num_frames):
 		
 		disp_data = trt_output
 		# logging.warning(f"disp_data.shape: {disp_data.shape} disp_data.dtype: {disp_data.dtype}")
-		# utils.write_legend_plot(disp_data, f"trt_output_{i}.png")
+		utils.write_legend_plot(disp_data, f"{TRT_INFERENCE_DIR}/trt_output_{i}.png")
 		
 		
 		

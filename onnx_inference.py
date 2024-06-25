@@ -28,9 +28,12 @@ import zed_inference
 ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR 
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
 ONNX_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_disparity"
-# ONNX_PCL_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_pcl"
-FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR]
+ONNX_INIT_FLOW_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_init_flow"
 
+FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR,ONNX_INIT_FLOW_DIR]
+
+# storing onxx init_flow histograms
+onnx_init_flow_plts = []
 
 def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
 	
@@ -58,6 +61,12 @@ def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):
 		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
 	
 	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
+	onnx_init_flow_plts.append(utils.PLT(data=pred_flow_dw2[0], 
+										title='onnx_init_flow',
+										bins=100,
+										range=(pred_flow_dw2.min(), pred_flow_dw2.max())))
+	
+	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
 	# logging.warning(f"pred_flow_dw2[0].shape: {pred_flow_dw2[0].shape}")
 
 	# logging.debug("Running with flow model!")
@@ -83,11 +92,10 @@ def main(num_frames, H,  W):
 	image_files_left.sort()
 	image_files_right.sort()
 
-
 	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
 	assert(len(image_files_left) >= num_frames), "Number of frames should be less than total number of images"
+
 	frame_rates = []
-	
 	for i in tqdm(range(num_frames)):
 		left_img = cv2.imread(image_files_left[i])
 		right_img = cv2.imread(image_files_right[i])
@@ -102,19 +110,13 @@ def main(num_frames, H,  W):
 		img_name = os.path.basename(image_files_left[i])
 		npy_name = img_name.replace('.png', '.npy')
 		np.save(f"{ONNX_DISPARITY_DIR}/{npy_name}", model_inference)
-		
-		# logging.warning(f"left.shape: {left.shape} model_inference.shape: {model_inference.shape}")
-
-		# pcl, _ = disparity2pcl.main(left, right, model_inference)
-		# np.save(f"{ONNX_PCL_DIR}/{img_name}.npy", pcl)
-		# utils.save_npy_as_ply(f"{ONNX_PCL_DIR}/{img_name}.ply", pcl)
-
 	
+	utils.plot_histograms(onnx_init_flow_plts, save_path=f"{ONNX_INIT_FLOW_DIR}/onnx_init_flow.png")
 
 if __name__ == "__main__": 
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
-	num_frames = 30
+	num_frames = 8
 	(H,W) = (480, 640)
 	main(num_frames, H, W)	

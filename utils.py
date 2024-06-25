@@ -17,26 +17,19 @@ from collections import namedtuple
 
 import matplotlib.pyplot as plt
 
-# def plot_histogram(data, title, bins=100, range=[0,1]):
-# 	plt.hist(data.flatten(), bins=bins, range=range)
-# 	plt.title(title)
-# 	plt.xlabel('Pixel Value')
-# 	plt.ylabel('Frequency')
-# 	plt.show()
-# 	plt.close()
 
 PLT = namedtuple('PLT', ['data', 'title', 'bins', 'range'])
-def plot_histograms(datasets):
+def plot_histograms(datasets, save_path=None, visualize=True):
+
+	# plts.append(utils.PLT(data=clipped_disp_data_uint8, 
+	# 					title='clipped uint8',
+	# 					bins=100,
+	# 					range=(0, 255)))
 	plt.figure(figsize=(10, 10))
 	
 	rows = math.ceil(len(datasets) / 2)
 
 	for i, dataset in enumerate(datasets):
-		# data = dataset.data
-		# title = dataset.title
-		# bins = dataset.bins
-		# range = dataset.range
-		# title, *_ = dataset
 		plt.subplot(rows, 2, i+1)
 		
 		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
@@ -45,7 +38,11 @@ def plot_histograms(datasets):
 		plt.ylabel('Frequency')
 
 	plt.tight_layout()
-	plt.show()
+	if save_path:
+		plt.savefig(save_path)
+		logging.warning(f"Saved the histogram plot at {save_path}")
+	if visualize:
+		plt.show()
 	plt.close()
 
 # input -> np.float32 disp_data
@@ -189,7 +186,7 @@ def delete_folders(folders):
 					# time.sleep(1)  # wait for 1 second before retrying
 			else:
 				print(f"The folder {folder_path} does not exist.")	
-	logging.warning("Deleted the old files.")
+	logging.warning(f"Deleted the old files in {folders}!")
 		
 def create_folders(folders):
 	for path in folders:
