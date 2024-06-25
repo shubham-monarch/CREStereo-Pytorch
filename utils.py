@@ -18,7 +18,7 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 
 
-PLT = namedtuple('PLT', ['data', 'title', 'bins', 'range'])
+PLT = namedtuple('PLT', ['data', 'title', 'xlabel', 'bins', 'range'])
 def plot_histograms(datasets, save_path=None, visualize=True):
 
 	# plts.append(utils.PLT(data=clipped_disp_data_uint8, 
@@ -31,16 +31,14 @@ def plot_histograms(datasets, save_path=None, visualize=True):
 
 	for i, dataset in enumerate(datasets):
 		plt.subplot(rows, 2, i+1)
-		
 		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
 		plt.title(dataset.title)
-		plt.xlabel('Pixel Value')
+		plt.xlabel(dataset.xlabel)
 		plt.ylabel('Frequency')
 
 	plt.tight_layout()
 	if save_path:
 		plt.savefig(save_path)
-		logging.warning(f"Saved the histogram plot at {save_path}")
 	if visualize:
 		plt.show()
 	plt.close()
@@ -67,8 +65,6 @@ def normalization_percentile(arr, lo= 2., hi=98.):
 
 
 def normalization_log(arr):
-	# logging.info(f"Inside normalization_log function")
-	# logging.info(f"arr.shape: {arr.shape}")
 	if np.min(arr) < 0:
 		arr = arr - np.min(arr)
 

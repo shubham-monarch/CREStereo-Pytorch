@@ -16,6 +16,7 @@ import fnmatch
 from tqdm import tqdm
 import random
 import time
+import zed_inference
 
 # ssimport pycuda.driver as cuda
 
@@ -50,15 +51,20 @@ import time
 
 
 
+# trt-inference constants
 TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
-# TRT_LOGGER = trt.Logger()
 EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 runtime = trt.Runtime(TRT_LOGGER)
-ZED_IMAGE_DIR = "zed_input/images"
+
+# camera constants
 BASELINE = 0.13
 FOCAL_LENGTH = 1093.5
 
+# io constants
+ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
 TRT_INFERENCE_DIR = "trt_inference"
+TRT_INIT_FLOW_DIR = f"{TRT_INFERENCE_DIR}/trt_init_flow"
+
 FOLDERS_TO_CREATE = [TRT_INFERENCE_DIR]
 
 
