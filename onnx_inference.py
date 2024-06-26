@@ -35,6 +35,43 @@ FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR,ONNX_INIT_FLOW_DIR]
 # storing onxx init_flow histograms
 onnx_init_flow_plts = []
 
+def inference_with_flow(left_img, right_img, model, model_no_flow, pred_flow_dw2, img_shape=(480, 640)):	
+	input1_name = model.get_inputs()[0].name
+	input2_name = model.get_inputs()[1].name
+	input3_name = model.get_inputs()[2].name
+	output_name = model.get_outputs()[0].name
+	
+	(h,w) = img_shape 
+
+	imgL = cv2.resize(left_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	imgR = cv2.resize(right_img, (w, h), interpolation=cv2.INTER_LINEAR)
+	imgL = np.ascontiguousarray(imgL.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	imgR = np.ascontiguousarray(imgR.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	
+	pred_disp = model.run([output_name], {
+						  input1_name: imgL, input2_name: imgR, input3_name: pred_flow_dw2})[0]
+	
+	return np.squeeze(pred_disp[:, 0, :, :])
+
+def inference_no_flow(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
+	
+	input1_name = model.get_inputs()[0].name
+	input2_name = model.get_inputs()[1].name
+	input3_name = model.get_inputs()[2].name
+	output_name = model.get_outputs()[0].name
+	
+	(h,w) = img_shape 
+
+	imgL_dw2 = cv2.resize(left_img, (w // 2, h // 2), interpolation=cv2.INTER_LINEAR)
+	imgR_dw2 = cv2.resize(right_img, (w//2, h//2),  interpolation=cv2.INTER_LINEAR)
+	imgL_dw2 = np.ascontiguousarray(imgL_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32) 
+	imgR_dw2 = np.ascontiguousarray(imgR_dw2.transpose(2, 0, 1)[None, :, :, :]).astype(np.float32)
+	
+	pred_flow_dw2 = model_no_flow.run(
+		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
+	
+	return pred_flow_dw2
+
 def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):	
 	
 	# Get onnx model layer names (see convert_to_onnx.py for what these are)
