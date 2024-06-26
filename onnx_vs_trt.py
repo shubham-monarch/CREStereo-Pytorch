@@ -24,9 +24,42 @@ FOLDERS_TO_CREATE = []
 
 (W,H) = (640, 480)
 
-def on_key(event):
-    plt.close() 
+def visualize_inference_and_histogram(left, onnx_inference_no_flow):
+    """
+    Visualizes the left image, ONNX inference without flow, and the histogram of the ONNX inference in a single plot.
+    Exits on key press.
 
+    Parameters:
+    - left: The left image as a numpy array.
+    - onnx_inference_no_flow: The ONNX inference result without flow as a numpy array.
+    """
+    def on_key(event):
+        if event.key == 'q':
+            plt.close()  # Close the plot window
+
+    # Create a figure with 3 subplots
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Display the left image
+    axs[0].imshow(left, cmap = "plasma")
+    axs[0].set_title('Left Image')
+    axs[0].axis('off')  # Hide the axis
+
+    # Display the onnx_inference_no_flow image
+    axs[1].imshow(onnx_inference_no_flow)
+    axs[1].set_title('ONNX Inference No Flow')
+    axs[1].axis('off')  # Hide the axis
+
+    # Calculate and display the histogram of onnx_inference_no_flow
+    onnx_inference_no_flow_flat = onnx_inference_no_flow.flatten()
+    axs[2].hist(onnx_inference_no_flow_flat, bins=50, color='blue', alpha=0.7)
+    axs[2].set_title('Histogram of ONNX Inference No Flow')
+
+    plt.tight_layout()  # Adjust the layout
+
+    fig.canvas.mpl_connect('key_press_event', on_key)  # Connect the key press event to the on_key function
+
+    plt.show()  # Show the plot
 def main(num_frames):
 	
 	utils.delete_folders(FOLDERS_TO_CREATE)
@@ -63,18 +96,21 @@ def main(num_frames):
 															sess_crestereo, sess_crestereo_no_flow, 
 															img_shape=(480, 640))   
 		
-		
+		onnx_inference_no_flow_reshaped = np.squeeze(onnx_inference_no_flow[:, 0, :, :]) # (H * W)
+		logging.warn(f"onnx_inference_no_flow.shape: {onnx_inference_no_flow.shape}")
 	
 		onnx_inference_with_flow = onnx_inference.inference_with_flow(left_img , right_img, 
 															  sess_crestereo, sess_crestereo_no_flow,
 															  onnx_inference_no_flow, 
 															  img_shape=(480, 640))   
 		
-		logging.warning(f"onnx_inference_with_flow.shape: {onnx_inference_with_flow.shape}")
+		# logging.warning(f"onnx_inference_with_flow.shape: {onnx_inference_with_flow.shape}")
 		
-		plt.imshow(onnx_inference_with_flow, cmap='plasma')  # Display the image in grayscale
-		plt.gcf().canvas.mpl_connect('key_press_event', on_key)  # Connect the key press event to the on_key function
-		plt.show()  # Show the plot
+		# plt.imshow(onnx_inference_with_flow, cmap='plasma')  # Display the image in grayscale
+		# plt.gcf().canvas.mpl_connect('key_press_event', on_key)  # Connect the key press event to the on_key function
+		# plt.show()  # Show the plot
+
+		visualize_inference_and_histogram(left, onnx_inference_no_flow_reshaped)
 
 		# # TRT ENGINE => NO FLOW
 		# ppi_trt_no_flow = trt_engine_no_flow.pre_process_input([left_img, right_img], 
