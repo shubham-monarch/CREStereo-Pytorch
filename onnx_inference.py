@@ -61,10 +61,10 @@ def inference(left_img, right_img, model, model_no_flow, img_shape=(480, 640)):
 		[output_name], {input1_name: imgL_dw2, input2_name: imgR_dw2})[0]
 	
 	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
-	onnx_init_flow_plts.append(utils.PLT(data=pred_flow_dw2[0], 
-										title='onnx_init_flow',
-										bins=100,
-										range=(pred_flow_dw2.min(), pred_flow_dw2.max())))
+	# onnx_init_flow_plts.append(utils.PLT(data=pred_flow_dw2[0], 
+	# 									title='onnx_init_flow',
+	# 									bins=100,
+	# 									range=(pred_flow_dw2.min(), pred_flow_dw2.max())))
 	
 	# logging.warning(f"pred_flow_dw2.shape: {pred_flow_dw2.shape} pred_flow_dw2.dtype: {pred_flow_dw2.dtype}")
 	# logging.warning(f"pred_flow_dw2[0].shape: {pred_flow_dw2[0].shape}")
