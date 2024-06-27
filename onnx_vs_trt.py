@@ -7,14 +7,13 @@ import os
 from tqdm import tqdm
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 # custom imports
 import zed_inference
 import onnx_inference
 import trt_inference as trt_inf
-import utils
+import utils, utils_matplotlib
 
 
 
@@ -24,42 +23,6 @@ FOLDERS_TO_CREATE = []
 
 (W,H) = (640, 480)
 
-def visualize_inference_and_histogram(left, onnx_inference_no_flow):
-    """
-    Visualizes the left image, ONNX inference without flow, and the histogram of the ONNX inference in a single plot.
-    Exits on key press.
-
-    Parameters:
-    - left: The left image as a numpy array.
-    - onnx_inference_no_flow: The ONNX inference result without flow as a numpy array.
-    """
-    def on_key(event):
-        if event.key == 'q':
-            plt.close()  # Close the plot window
-
-    # Create a figure with 3 subplots
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-
-    # Display the left image
-    axs[0].imshow(left, cmap = "plasma")
-    axs[0].set_title('Left Image')
-    axs[0].axis('off')  # Hide the axis
-
-    # Display the onnx_inference_no_flow image
-    axs[1].imshow(onnx_inference_no_flow)
-    axs[1].set_title('ONNX Inference No Flow')
-    axs[1].axis('off')  # Hide the axis
-
-    # Calculate and display the histogram of onnx_inference_no_flow
-    onnx_inference_no_flow_flat = onnx_inference_no_flow.flatten()
-    axs[2].hist(onnx_inference_no_flow_flat, bins=50, color='blue', alpha=0.7)
-    axs[2].set_title('Histogram of ONNX Inference No Flow')
-
-    plt.tight_layout()  # Adjust the layout
-
-    fig.canvas.mpl_connect('key_press_event', on_key)  # Connect the key press event to the on_key function
-
-    plt.show()  # Show the plot
 def main(num_frames):
 	
 	utils.delete_folders(FOLDERS_TO_CREATE)
@@ -79,8 +42,8 @@ def main(num_frames):
 	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
 
 	# loading the trt engines
-	# trt_engine_no_flow = trt_inf.TRTEngine("models/crestereo_without_flow.trt")
-	# trt_engine_with_flow = trt_inf.TRTEngine("models/crestereo.trt")
+	trt_engine_no_flow = trt_inf.TRTEngine("models/crestereo_without_flow.trt")
+	trt_engine_with_flow = trt_inf.TRTEngine("models/crestereo.trt")
 	
 
 
@@ -90,14 +53,14 @@ def main(num_frames):
 
 		left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
 		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-	
-		# model_inference_onnx = onnx_inference.inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
+
+		# ONNX INFERENCE -->
 		onnx_inference_no_flow = onnx_inference.inference_no_flow(left_img , right_img, 
 															sess_crestereo, sess_crestereo_no_flow, 
 															img_shape=(480, 640))   
 		
-		onnx_inference_no_flow_reshaped = np.squeeze(onnx_inference_no_flow[:, 0, :, :]) # (H * W)
-		logging.warn(f"onnx_inference_no_flow.shape: {onnx_inference_no_flow.shape}")
+		onnx_inference_no_flow_reshaped = np.squeeze(onnx_inference_no_flow[:, 0, :, :]) 
+		logging.warning(f"onnx_inference_no_flow.shape: {onnx_inference_no_flow.shape}") # (1, 2, 240, 320)
 	
 		onnx_inference_with_flow = onnx_inference.inference_with_flow(left_img , right_img, 
 															  sess_crestereo, sess_crestereo_no_flow,
@@ -106,31 +69,46 @@ def main(num_frames):
 		
 		# logging.warning(f"onnx_inference_with_flow.shape: {onnx_inference_with_flow.shape}")
 		
-		# plt.imshow(onnx_inference_with_flow, cmap='plasma')  # Display the image in grayscale
-		# plt.gcf().canvas.mpl_connect('key_press_event', on_key)  # Connect the key press event to the on_key function
-		# plt.show()  # Show the plot
-
-		visualize_inference_and_histogram(left, onnx_inference_no_flow_reshaped)
-
-		# # TRT ENGINE => NO FLOW
-		# ppi_trt_no_flow = trt_engine_no_flow.pre_process_input([left_img, right_img], 
-		# 												 [(H // 2, W // 2), (H // 2, W // 2)])
-		# trt_engine_no_flow.load_input(ppi_trt_no_flow)
-		# trt_inference_outputs_no_flow =  trt_engine_no_flow.run_trt_inference()
-		# trt_inference_output_no_flow = trt_inference_outputs_no_flow[0].reshape(1, 2, H // 2, W // 2)
-		# trt_inference_no_flow = trt_inference_output_no_flow
-
-		# # TRT ENGINE => WITH FLOW	
-		# ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, trt_inference_no_flow], 
-		# 									[(H, W), (H, W), None])
-		# trt_engine_with_flow.load_input(ppi_trt)
-		# trt_inference_outputs =  trt_engine_with_flow.run_trt_inference()
-		# trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
-		# trt_inference = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
+		# TRT INFERENCE --> 
 		
+		# TRT ENGINE => NO FLOW
+		ppi_trt_no_flow = trt_engine_no_flow.pre_process_input([left_img, right_img], 
+														 [(H // 2, W // 2), (H // 2, W // 2)])
+		trt_engine_no_flow.load_input(ppi_trt_no_flow)
+		trt_inference_outputs_no_flow =  trt_engine_no_flow.run_trt_inference()
+		trt_inference_output_no_flow = trt_inference_outputs_no_flow[0].reshape(1, 2, H // 2, W // 2)
+		trt_inference_output_no_flow_reshaped = np.squeeze(trt_inference_output_no_flow[:, 0, :, :])
+		zeros_arr = np.zeros(trt_inference_output_no_flow.shape)
+		
+		# visualize_inference_and_histogram(left, onnx_inference_no_flow_reshaped, trt_inference_output_no_flow_reshaped)
+
+		# TRT ENGINE => WITH FLOW	
+		# ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, zeros_arr], 
+		# 									[(H, W), (H, W), None])
+		ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, trt_inference_output_no_flow], 
+											[(H, W), (H, W), None])
+		# ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, onnx_inference_no_flow], 
+		# 									[(H, W), (H, W), None])
+		trt_engine_with_flow.load_input(ppi_trt)
+		trt_inference_outputs =  trt_engine_with_flow.run_trt_inference()
+		trt_inference_output = trt_inference_outputs[0].reshape(1, 2, H, W)
+		trt_inference_output_reshaped = np.squeeze(trt_inference_output[:, 0, :, :]) # (H * W)
+		
+		utils_matplotlib.plot_histograms_and_arrays([
+												onnx_inference_no_flow_reshaped, 
+											   	trt_inference_output_no_flow_reshaped,  
+											   	onnx_inference_with_flow, 
+											   	trt_inference_output_reshaped
+											   ],
+											   [
+												onnx_inference_no_flow_reshaped, 
+			   									trt_inference_output_no_flow_reshaped,  
+											   	onnx_inference_with_flow, 
+											   	trt_inference_output_reshaped
+												])
 		
 
 if __name__ == "__main__":
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
-	num_frames = 30
-	main(num_frames=30)
+	num_frames = 3
+	main(num_frames)

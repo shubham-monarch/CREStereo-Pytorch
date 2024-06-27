@@ -8,7 +8,6 @@ import os
 import shutil
 import time
 import math
-from collections import namedtuple
 
 # TO-DO=>
 # - jsonize config files
@@ -18,30 +17,7 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 
 
-PLT = namedtuple('PLT', ['data', 'title', 'xlabel', 'bins', 'range'])
-def plot_histograms(datasets, save_path=None, visualize=True):
 
-	# plts.append(utils.PLT(data=clipped_disp_data_uint8, 
-	# 					title='clipped uint8',
-	# 					bins=100,
-	# 					range=(0, 255)))
-	plt.figure(figsize=(10, 10))
-	
-	rows = math.ceil(len(datasets) / 2)
-
-	for i, dataset in enumerate(datasets):
-		plt.subplot(rows, 2, i+1)
-		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
-		plt.title(dataset.title)
-		plt.xlabel(dataset.xlabel)
-		plt.ylabel('Frequency')
-
-	plt.tight_layout()
-	if save_path:
-		plt.savefig(save_path)
-	if visualize:
-		plt.show()
-	plt.close()
 
 # input -> np.float32 disp_data
 def get_depth_data(disp_data, baseline, focal_length): 
