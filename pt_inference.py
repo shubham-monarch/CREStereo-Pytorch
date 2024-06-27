@@ -99,9 +99,12 @@ def main(num_frames, H, W):
 		left_img = cv2.imread(image_files_left[i])
 		right_img = cv2.imread(image_files_right[i])
 
-		imgL = left_img
-		imgR = right_img
+		# imgL = left_img
+		# imgR = right_img
 
+		imgL = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)	
+		imgR = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)	
+		
 		pred = INFERENCE(imgL, imgR)
 		img_name = os.path.basename(image_files_left[i])
 		npy_name = img_name.replace('.png', '.npy')
@@ -122,6 +125,6 @@ def main(num_frames, H, W):
 if __name__ == '__main__':
 
 	coloredlogs.install(level="DEBUG", force=True)  # install a handler on the root logger
-	main(num_frames=30, H=480, W=640)	
+	main(num_frames=10, H=480, W=640)	
 
 

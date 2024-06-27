@@ -1,5 +1,10 @@
 #! /usr/bin/env python3
 
+# TO-DO=>
+# - tune onxx conversion params -> opset_version, do_constant_folding
+# - analyze onxx conversion warnings
+
+
 # standard imports
 import coloredlogs, logging
 import onnxruntime as ort

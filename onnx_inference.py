@@ -13,7 +13,11 @@ import time
 from tqdm import tqdm
 import disparity2pcl
 import open3d as o3d
+
+# custom imports
 import zed_inference
+import utils_matplotlib
+
 
 # TO-DO -> 
 # - calculate frame rate -> pytorch vs onnx vs tensorrt
@@ -148,12 +152,12 @@ def main(num_frames, H,  W):
 		npy_name = img_name.replace('.png', '.npy')
 		np.save(f"{ONNX_DISPARITY_DIR}/{npy_name}", model_inference)
 	
-	utils.plot_histograms(onnx_init_flow_plts, save_path=f"{ONNX_INIT_FLOW_DIR}/onnx_init_flow.png")
+	utils_matplotlib.plot_histograms(onnx_init_flow_plts, save_path=f"{ONNX_INIT_FLOW_DIR}/onnx_init_flow.png", visualize=False)
 
 if __name__ == "__main__": 
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
-	num_frames = 8
+	num_frames = 10
 	(H,W) = (480, 640)
 	main(num_frames, H, W)	

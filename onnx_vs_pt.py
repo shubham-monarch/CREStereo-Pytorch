@@ -23,6 +23,7 @@ def visualize_and_save_disparity_comparisons(pt_file_path, onnx_file_path, save_
     pt_disparity = np.load(pt_file_path)
     onnx_disparity = np.load(onnx_file_path)
     
+    # logging.warning(f"pt_disparity.shape: {pt_disparity.shape} onnx_disparity.shape: {onnx_disparity.shape}")   
     # Compute the difference
     disparity_difference = (pt_disparity - onnx_disparity)
     
@@ -77,7 +78,7 @@ def main():
 
     assert(len(pt_files) > 0), "No disparity maps found in PT_DISPARITY_DIR"
     assert(len(onnx_files) > 0), "No disparity maps found in ONNX_DISPARITY_DIR"
-    assert(len(pt_files) == len(onnx_files)), "Number of PT and ONNX disparity maps should be equal"
+    assert(len(pt_files) == len(onnx_files)), f"Number of PT({len(pt_files)}) and ONNX disparity maps({len(onnx_files)}) should be equal"
     
     utils.delete_folders(FOLDERS_TO_CREATE)
     utils.create_folders(FOLDERS_TO_CREATE)
