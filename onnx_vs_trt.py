@@ -47,8 +47,11 @@ def main(num_frames):
 	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
 
 	# loading the trt engines
-	trt_engine_no_flow = trt_inf.TRTEngine("models/crestereo_without_flow.trt")
-	trt_engine_with_flow = trt_inf.TRTEngine("models/crestereo.trt")
+	# trt_engine_no_flow = trt_inf.TRTEngine("models/crestereo_without_flow.trt")
+	# trt_engine_with_flow = trt_inf.TRTEngine("models/crestereo.trt")
+	
+	trt_engine_no_flow = trt_inf.TRTEngine("models/simp_crestereo_without_flow.trt")
+	trt_engine_with_flow = trt_inf.TRTEngine("models/simp_crestereo.trt")
 	
 
 
@@ -99,21 +102,22 @@ def main(num_frames):
 		trt_inference_output = trt_inference_outputs[0].reshape(1, 2, H, W)
 		trt_inference_output_reshaped = np.squeeze(trt_inference_output[:, 0, :, :]) # (H * W)
 		
-		utils_matplotlib.plot_histograms_and_arrays([
-												onnx_inference_no_flow_reshaped, 
-											   	trt_inference_output_no_flow_reshaped,  
-											   	onnx_inference_with_flow, 
-											   	trt_inference_output_reshaped
-											   ],
-											   [
-												onnx_inference_no_flow_reshaped, 
-			   									trt_inference_output_no_flow_reshaped,  
-											   	onnx_inference_with_flow, 
-											   	trt_inference_output_reshaped
-												])
+		# utils_matplotlib.plot_histograms_and_arrays([
+		# 										onnx_inference_no_flow_reshaped, 
+		# 									   	trt_inference_output_no_flow_reshaped,  
+		# 									   	onnx_inference_with_flow, 
+		# 									   	trt_inference_output_reshaped
+		# 									   ],
+		# 									   [
+		# 										onnx_inference_no_flow_reshaped, 
+		# 	   									trt_inference_output_no_flow_reshaped,  
+		# 									   	onnx_inference_with_flow, 
+		# 									   	trt_inference_output_reshaped
+		# 										])
 		
+		utils_matplotlib.plot_arrays(onnx_inference_with_flow, trt_inference_output_reshaped)
 
 if __name__ == "__main__":
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
-	num_frames = 3
+	num_frames = 30
 	main(num_frames)

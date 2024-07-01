@@ -134,15 +134,18 @@ class TRTEngine:
 		# transfer input data to the gpu
 		for inp in self.inputs:
 			cuda.memcpy_htod_async(inp['device'], inp['host'], self.stream)
-			self.context.execute_async_v3(self.stream.handle)
-			# fetch outputs from gpu
-			for out in self.outputs:
-				cuda.memcpy_dtoh_async(out['host'], out['device'], self.stream)
-			# synchronize stream
-			self.stream.synchronize()
-			trt_inference_outputs = [out['host'] for out in self.outputs]
+		self.context.execute_async_v3(self.stream.handle)
+		self.stream.synchronize()
+		
+		# fetch outputs from gpu
+		for out in self.outputs:
+			cuda.memcpy_dtoh_async(out['host'], out['device'], self.stream)
+		# synchronize stream
+		self.stream.synchronize()
+		
+		trt_inference_outputs = [out['host'] for out in self.outputs]
 			# output = np.reshape(data, (1, 2, 640, 640))[0]
-			return trt_inference_outputs
+		return trt_inference_outputs
 
 	def log_engine_io_details(self, engine_name):
 		logging.warning(f"[INSPECTING {engine_name}.inputs/outputs] ==> ")
