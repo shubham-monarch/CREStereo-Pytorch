@@ -42,30 +42,53 @@ def plot_arrays(*arrays, cmap='viridis', exit_on_q=True):
     
     plt.show()
 
-PLT = namedtuple('PLT', ['data', 'title', 'xlabel', 'bins', 'range'])
-def plot_histograms(datasets, save_path=None, visualize=True):
 
-	# plts.append(utils.PLT(data=clipped_disp_data_uint8, 
-	# 					title='clipped uint8',
-	# 					bins=100,
-	# 					range=(0, 255)))
-	plt.figure(figsize=(10, 10))
+def plot_histograms(*arrays):
+    # Determine the number of rows needed (max 2 histograms per row)
+    num_arrays = len(arrays)
+    num_rows = (num_arrays + 1) // 2  # Calculate rows needed, round up if odd number of arrays
+    
+    fig, axs = plt.subplots(num_rows, 2, figsize=(10, 5 * num_rows))  # Adjust figure size as needed
+    axs = axs.flatten()  # Flatten the array of axes for easy iteration
+    
+    for i, array in enumerate(arrays):
+        # Plot histogram on the ith subplot
+        axs[i].hist(array.flatten(), bins=20, alpha=0.75)  # Adjust bins and alpha as needed
+        axs[i].set_title(f'Array {i+1} Histogram')
+    
+    # Hide any unused subplots if the number of arrays is odd
+    if num_arrays % 2 != 0:
+        axs[-1].axis('off')
+    
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+
+# PLT = namedtuple('PLT', ['data', 'title', 'xlabel', 'bins', 'range'])
+# def plot_histograms(datasets, save_path=None, visualize=True):
+
+# 	# plts.append(utils.PLT(data=clipped_disp_data_uint8, 
+# 	# 					title='clipped uint8',
+# 	# 					bins=100,
+# 	# 					range=(0, 255)))
+# 	plt.figure(figsize=(10, 10))
 	
-	rows = math.ceil(len(datasets) / 2)
+# 	rows = math.ceil(len(datasets) / 2)
 
-	for i, dataset in enumerate(datasets):
-		plt.subplot(rows, 2, i+1)
-		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
-		plt.title(dataset.title)
-		plt.xlabel(dataset.xlabel)
-		plt.ylabel('Frequency')
+# 	for i, dataset in enumerate(datasets):
+# 		plt.subplot(rows, 2, i+1)
+# 		plt.hist(x=dataset.data.flatten(),  bins=dataset.bins, range=dataset.range)
+# 		plt.title(dataset.title)
+# 		plt.xlabel(dataset.xlabel)
+# 		plt.ylabel('Frequency')
 
-	plt.tight_layout()
-	if save_path:
-		plt.savefig(save_path)
-	if visualize:
-		plt.show()
-	plt.close()
+# 	plt.tight_layout()
+# 	if save_path:
+# 		plt.savefig(save_path)
+# 	if visualize:
+# 		plt.show()
+# 	plt.close()
 
 
 def plot_histograms_and_arrays(histogram_arrs, plot_arrs):

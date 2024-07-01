@@ -6,10 +6,14 @@ import numpy as np
 import cv2
 from imread_from_url import imread_from_url
 import onnxruntime as rt
+import onnx
+import coloredlogs, logging
 
 from nets import Model
 
 if __name__ == '__main__':
+
+	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 
 	model_path = "models/crestereo_eth3d.pth"
 
@@ -27,27 +31,45 @@ if __name__ == '__main__':
 
 	# Export the model
 	torch.onnx.export(model,               
-	                  (t1, t2, flow_init),
-	                  "models/crestereo.onnx",   # where to save the model (can be a file or file-like object)
-	                  export_params=True,        # store the trained parameter weights inside the model file
-	                  opset_version=12,          # the ONNX version to export the model to
-	                #   do_constant_folding=True,  # whether to execute constant folding for optimization
-	                  do_constant_folding=False,  # whether to execute constant folding for optimization
-	                  input_names = ['left', 'right','flow_init'],   # the model's input names
-	                  output_names = ['output'])
+					  (t1, t2, flow_init),
+					  "models/crestereo.onnx",   # where to save the model (can be a file or file-like object)
+					  export_params=True,        # store the trained parameter weights inside the model file
+					  opset_version=17,          # the ONNX version to export the model to
+					  do_constant_folding=True,  # whether to execute constant folding for optimization
+					#   do_constant_folding=False,  # whether to execute constant folding for optimization
+					  input_names = ['left', 'right','flow_init'],   # the model's input names
+					  output_names = ['output'])
 
 	# Export the model without init_flow (it takes a lot of time)
 	# !! Does not work prior to pytorch 1.12 (confirmed working on pytorch 2.0.0)
 	# Ref: https://github.com/pytorch/pytorch/pull/73760
 	torch.onnx.export(model,               
-	                  (t1_half, t2_half),
-	                  "models/crestereo_without_flow.onnx",   # where to save the model (can be a file or file-like object)
-	                  export_params=True,        # store the trained parameter weights inside the model file
-	                  opset_version=12,          # the ONNX version to export the model to
-	                #   do_constant_folding=True,  # whether to execute constant folding for optimization
-	                  do_constant_folding=False,  # whether to execute constant folding for optimization
-	                  input_names = ['left', 'right'],   # the model's input names
-	                  output_names = ['output'])
+					  (t1_half, t2_half),
+					  "models/crestereo_without_flow.onnx",   # where to save the model (can be a file or file-like object)
+					  export_params=True,        # store the trained parameter weights inside the model file
+					  opset_version=17,          # the ONNX version to export the model to
+					  do_constant_folding=True,  # whether to execute constant folding for optimization
+					#   do_constant_folding=False,  # whether to execute constant folding for optimization
+					  input_names = ['left', 'right'],   # the model's input names
+					  output_names = ['output'])
 
 	
+	# validate the onnx model
+	onnx_model = "models/crestereo.onnx"
+	onxx_model_no_flow = "models/crestereo_without_flow.onnx"
+
+	try:
+		onnx.checker.check_model(onnx.load(onnx_model))
+		logging.info(f"Model {onnx_model} is validated")
+	except Exception as e:
+		logging.error(f"Model {onnx_model} is not validated")
+	
+	
+	try: 
+		onnx.checker.check_model(onnx.load(onxx_model_no_flow))
+		logging.info(f"Model {onxx_model_no_flow} is validated")
+	except Exception as e:
+		logging.error(f"Model {onxx_model_no_flow} is not validated: {e}")
+
+
 

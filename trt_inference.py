@@ -16,7 +16,11 @@ import fnmatch
 from tqdm import tqdm
 import random
 import time
+
+# custom imports
 import zed_inference
+import utils_matplotlib
+
 
 # ssimport pycuda.driver as cuda
 
@@ -89,6 +93,7 @@ class TRTEngine:
 	def load_input(self, inputs):
 		for idx, input in enumerate(inputs): 
 			self.inputs[idx]['host'] = input
+			# self.inputs[idx]['host'] = np.ravel(input)
 
 	def pre_process_input(self,inputs, dims):
 		pre_processed_inputs = [] 
@@ -106,12 +111,10 @@ class TRTEngine:
 		self.stream = cuda.Stream()
 		with self.engine.create_execution_context() as context:
 			for binding in self.engine:
-				# shape = self.engine.get_binding_shape(binding)	
 				shape = self.engine.get_tensor_shape(binding)	
 				size = trt.volume(shape)
-				# dtype = trt.nptype(self.engine.get_binding_dtype(binding))
 				dtype = trt.nptype(self.engine.get_tensor_dtype(binding))
-				# logging.debug(f"{binding}.shape: {shape} dtype: {dtype}")
+				logging.warning(f"shape: {shape} size: {size} dtype: {dtype}")
 				host_mem = cuda.pagelocked_empty(size, dtype)
 				device_mem = cuda.mem_alloc(host_mem.nbytes)
 				self.bindings.append(int(device_mem))
@@ -176,9 +179,13 @@ def main(num_frames):
 	fps = trt_utils.FPS()
 
 	# onnx model paths
-	path_onnx_model = "models/crestereo.onnx"
-	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
+	# path_onnx_model = "models/crestereo.onnx"
+	# path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
 	
+	path_onnx_model = "models/simp_crestereo.onnx"
+	path_onnx_model_without_flow = "models/simp_crestereo_without_flow.onnx"
+	
+
 	# trt engine paths
 	path_trt_engine = path_onnx_model.replace(".onnx", ".trt")		
 	path_trt_engine_without_flow = path_onnx_model_without_flow.replace(".onnx", ".trt")
@@ -212,26 +219,17 @@ def main(num_frames):
 		trt_inference_outputs =  trt_engine_without_flow.run_trt_inference()
 		# resizing outputs
 		trt_output = trt_inference_outputs[0].reshape(1, 2, H // 2, W // 2)
-		
-		# ENGINE TWO (with flow)	
-		ppi_model2 = trt_engine.pre_process_input([left_img, right_img, trt_output], 
-											[(H, W), (H, W), None])
-		# loading inputs to engine
-		trt_engine.load_input(ppi_model2)
-		# inference
-		trt_inference_outputs =  trt_engine.run_trt_inference()
-		# resizing outputs
-		trt_output = trt_inference_outputs[0].reshape(1, 2, H, W)
-		trt_output = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
-		
-		disp_data = trt_output
-		# logging.warning(f"disp_data.shape: {disp_data.shape} disp_data.dtype: {disp_data.dtype}")
-		utils.write_legend_plot(disp_data, f"{TRT_INFERENCE_DIR}/trt_output_{i}.png")
+		logging.error(f"trt_output.shape: {trt_output.shape}")	
+		init_flow = np.squeeze(trt_output[:, 0, :, :]) 
+		logging.error(f"init_flow.shape: {init_flow.shape}")	
+		utils_matplotlib.plot_arrays(init_flow)
+
+
 		
 		
 		
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
-	num_images =20
+	num_images =2
 	main(num_images)
