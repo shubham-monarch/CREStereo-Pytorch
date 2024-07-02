@@ -62,10 +62,12 @@ FOCAL_LENGTH = 1093.5
 
 # io constants
 ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
-TRT_INFERENCE_DIR = "trt_inference"
-TRT_INIT_FLOW_DIR = f"{TRT_INFERENCE_DIR}/trt_init_flow"
+ONNX_VS_TRT_DIR = "onnx_vs_trt"
+TRT_DISPARITY_DIR = f"{ONNX_VS_TRT_DIR}/trt_disp_map"
+TRT_DEPTH_DIR = f"{ONNX_VS_TRT_DIR}/trt_depth_map"
 
-FOLDERS_TO_CREATE = [TRT_INFERENCE_DIR]
+
+FOLDERS_TO_CREATE = [TRT_DISPARITY_DIR, TRT_DEPTH_DIR]
 
 
 class TRTEngine:
@@ -174,13 +176,13 @@ def main(num_frames):
 	assert(len(image_files_left) > num_frames), "Number of frames should be less than total number of images"
 	
 	# generating random frame indices
-	frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
-	logging.info(f"frame_indices: {frame_indices}")
-	fps = trt_utils.FPS()
+	# frame_indices = random.sample(range(0, len(image_files_left) - 1), num_frames)
+	# logging.info(f"frame_indices: {frame_indices}")
+	# fps = trt_utils.FPS()
 
 	# onnx model paths
-	path_onnx_model = "models/crestereo.onnx"
-	path_onnx_model_without_flow = "models/crestereo_without_flow.onnx"
+	path_onnx_model = "models/simp_crestereo.onnx"
+	path_onnx_model_without_flow = "models/simp_crestereo_without_flow.onnx"
 	
 	# trt engine paths
 	path_trt_engine = path_onnx_model.replace(".onnx", ".trt")		
@@ -194,17 +196,11 @@ def main(num_frames):
 	trt_engine = TRTEngine(path_trt_engine)
 	trt_engine.log_engine_io_details(engine_name="TRT_ENGINE")
 	
-	for i in tqdm(frame_indices):
-		
-		plts = []
+	for i in tqdm(range(num_frames)):
 
-		# START TIMER
-		start_time = time.time()
-		
 		# read left and right images
-		rand_idx = random.randint(0, num_frames - 1)
-		left_img = cv2.imread(image_files_left[rand_idx])
-		right_img = cv2.imread(image_files_right[rand_idx])
+		left_img = cv2.imread(image_files_left[i])
+		right_img = cv2.imread(image_files_right[i])
 
 		# ENGINE ONE [without flow]	
 		ppi_model1 = trt_engine_without_flow.pre_process_input([left_img, right_img], 
@@ -228,13 +224,15 @@ def main(num_frames):
 		trt_output = np.squeeze(trt_output[:, 0, :, :]) # (H * W)
 		
 		disp_data = trt_output
-		# logging.warning(f"disp_data.shape: {disp_data.shape} disp_data.dtype: {disp_data.dtype}")
-		utils.write_legend_plot(disp_data, f"{TRT_INFERENCE_DIR}/trt_output_{i}.png")
-		
-		
+		depth_data = utils.get_depth_data(disp_data, BASELINE, FOCAL_LENGTH)
+
+		img_name = os.path.basename(image_files_left[i])
+		npy_name = img_name.replace('.png', '.npy')
+		np.save(f"{TRT_DISPARITY_DIR}/{npy_name}", disp_data)
+		np.save(f"{TRT_DEPTH_DIR}/{npy_name}", depth_data)
 		
 if __name__ == '__main__':
 	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
 	logging.debug(f"TensortRT version: {trt.__version__}")
-	num_images =20
+	num_images = 20
 	main(num_images)

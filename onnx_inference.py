@@ -17,6 +17,7 @@ import open3d as o3d
 # custom imports
 import zed_inference
 import utils_matplotlib
+import trt_inference
 
 
 # TO-DO -> 
@@ -31,10 +32,14 @@ import utils_matplotlib
 # H,W = DIMS
 ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR 
 ONNX_VS_PYTORCH_DIR = "onnx_vs_pytorch"
-ONNX_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_disparity"
-ONNX_INIT_FLOW_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_init_flow"
+ONNX_VS_TRT_DIR = "onnx_vs_trt"
 
-FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR,ONNX_INIT_FLOW_DIR]
+
+# ONNX_DISPARITY_DIR = f"{ONNX_VS_PYTORCH_DIR}/onnx_disparity"
+ONNX_DISPARITY_DIR = f"{trt_inference.ONNX_VS_TRT_DIR}/onnx_disparity"
+ONNX_DEPTH_MAP_DIR = f"{trt_inference.ONNX_VS_TRT_DIR}/onnx_depth_map"
+
+FOLDERS_TO_CREATE = [ONNX_DISPARITY_DIR, ONNX_DEPTH_MAP_DIR]
 
 # storing onxx init_flow histograms
 onnx_init_flow_plts = []
@@ -145,19 +150,23 @@ def main(num_frames, H,  W):
 		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
 	
 		start_time = time.time()
-		
+
 		model_inference = inference(left_img , right_img, sess_crestereo, sess_crestereo_no_flow, img_shape=(480, 640))   
+		depth = utils.get_depth_data(model_inference, trt_inference.BASELINE, trt_inference.FOCAL_LENGTH)
+
 		# extracting image name from the input left image
 		img_name = os.path.basename(image_files_left[i])
 		npy_name = img_name.replace('.png', '.npy')
 		np.save(f"{ONNX_DISPARITY_DIR}/{npy_name}", model_inference)
+		np.save(f"{ONNX_DEPTH_MAP_DIR}/{npy_name}", depth)
+
 	
-	utils_matplotlib.plot_histograms(onnx_init_flow_plts, save_path=f"{ONNX_INIT_FLOW_DIR}/onnx_init_flow.png", visualize=False)
+	# utils_matplotlib.plot_histograms(onnx_init_flow_plts, save_path=f"{ONNX_INIT_FLOW_DIR}/onnx_init_flow.png", visualize=False)
 
 if __name__ == "__main__": 
 	
 	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
 	logging.warning("[onnx_inference.py] Starting inference ...")
-	num_frames = 10
+	num_frames = 20
 	(H,W) = (480, 640)
 	main(num_frames, H, W)	

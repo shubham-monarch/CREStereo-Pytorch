@@ -1,123 +1,81 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python3 
 
-# TO-DO=>
-# - tune onxx conversion params -> opset_version, do_constant_folding
-# - analyze onxx conversion warnings
-
-
-# standard imports
 import coloredlogs, logging
-import onnxruntime as ort
+import zed_inference
+import pt_inference
+import utils 
 import os
+import numpy as np
 from tqdm import tqdm
 import cv2
-import numpy as np
-
 
 # custom imports
-import zed_inference
+import trt_inference
 import onnx_inference
-import trt_inference as trt_inf
-import utils, utils_matplotlib
+import utils_matplotlib
 
 
+# ZED_DEP = zed_inference.ZED_PCL_DIR
+# PT_DEPTH_MAP_DIR = pt_inference.PT_DEPTH_MAP_DIR
 
-ZED_IMAGE_DIR = zed_inference.ZED_IMG_DIR
-ONNX_VS_TRT_DIR = "onnx_vs_trt"
-FOLDERS_TO_CREATE = []
+# ZED_VS_PT_DIR = "zed_vs_pt"
+# ZED_VS_PT_DEPTH_ERROR_DIR = f"{ZED_VS_PT_DIR}/depth_error"
+# ZED_VS_PT_DEPTH_ERROR_HIST = f"{ZED_VS_PT_DEPTH_ERROR_DIR}/depth_error_histograms"
+# ZED_VS_PT_DEPTH_ERROR_HEATMAP = f"{ZED_VS_PT_DEPTH_ERROR_DIR}/depth_error_heatmaps"
 
-(W,H) = (640, 480)
+ONNX_VS_TRT_DEPTH_ERROR_DIR = f"{trt_inference.ONNX_VS_TRT_DIR}/depth_error"
+ONNX_VS_TRT_DEPTH_ERROR_HIST = f"{ONNX_VS_TRT_DEPTH_ERROR_DIR}/depth_error_histograms"
+ONNX_VS_TRT_DEPTH_ERROR_HEATMAP = f"{ONNX_VS_TRT_DEPTH_ERROR_DIR}/depth_error_heatmaps"
 
-def main(num_frames):
+FOLDERS_TO_CREATE = [ONNX_VS_TRT_DEPTH_ERROR_HIST, ONNX_VS_TRT_DEPTH_ERROR_HEATMAP]
+
+def main(): 	
 	
 	utils.delete_folders(FOLDERS_TO_CREATE)
 	utils.create_folders(FOLDERS_TO_CREATE)
 
-	image_files_left = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('left_') and f.endswith('.png')]
-	image_files_right = [os.path.join(ZED_IMAGE_DIR, f) for f in os.listdir(ZED_IMAGE_DIR) if f.startswith('right_') and f.endswith('.png')]
-	
-	image_files_left.sort()
-	image_files_right.sort()
+	onnx_files = [] 
+	trt_files = [] 
 
-	assert(len(image_files_left) == len(image_files_right)), "Number of left and right images should be equal"
-	assert(len(image_files_left) >= num_frames), "Number of frames should be less than total number of images"
+	onnx_files = [os.path.join(onnx_inference.ONNX_DEPTH_MAP_DIR, f) for f in os.listdir(onnx_inference.ONNX_DEPTH_MAP_DIR) if f.endswith('.npy')]
+	trt_files = [os.path.join(trt_inference.TRT_DEPTH_DIR, f) for f in os.listdir(trt_inference.TRT_DEPTH_DIR) if f.endswith('.npy')]
 
-	# loading the onnx models
-	sess_crestereo = ort.InferenceSession('models/crestereo.onnx')
-	sess_crestereo_no_flow = ort.InferenceSession('models/crestereo_without_flow.onnx')
+	onnx_files = sorted(onnx_files)
+	trt_files = sorted(trt_files)
 
-	# loading the trt engines
-	# trt_engine_no_flow = trt_inf.TRTEngine("models/crestereo_without_flow.trt")
-	# trt_engine_with_flow = trt_inf.TRTEngine("models/crestereo.trt")
-	
-	trt_engine_no_flow = trt_inf.TRTEngine("models/simp_crestereo_without_flow.trt")
-	trt_engine_with_flow = trt_inf.TRTEngine("models/simp_crestereo.trt")
-	
+	assert len(onnx_files) == len(trt_files), f"Number of files in ONNX({len(onnx_files)}) and TRT directories({len(trt_files)}) should be the same."
 
+	for onnx_file, trt_file in tqdm(zip(onnx_files, trt_files), total = len(onnx_files)):
+		onnx_depth = np.load(onnx_file)
+		trt_depth = np.load(trt_file)
 
-	for i in tqdm(range(num_frames)):
-		left_img = cv2.imread(image_files_left[i])
-		right_img = cv2.imread(image_files_right[i])
+		onnx_depth = utils.inf_filtering(onnx_depth)
+		trt_depth = utils.inf_filtering(trt_depth)
 
-		left = cv2.resize(left_img, (W, H), interpolation=cv2.INTER_LINEAR)
-		right = cv2.resize(right_img, (W, H), interpolation=cv2.INTER_LINEAR)
-
-		# ONNX INFERENCE -->
-		onnx_inference_no_flow = onnx_inference.inference_no_flow(left_img , right_img, 
-															sess_crestereo, sess_crestereo_no_flow, 
-															img_shape=(480, 640))   
+		onnx_depth[np.isinf(onnx_depth)] = np.nan
+		onnx_depth[onnx_depth > 10] = np.nan
+		# logging.warning(f"Number of inf values in zed_depth: {np.sum(np.isinf(zed_depth))}")
 		
-		onnx_inference_no_flow_reshaped = np.squeeze(onnx_inference_no_flow[:, 0, :, :]) 
-		logging.warning(f"onnx_inference_no_flow.shape: {onnx_inference_no_flow.shape}") # (1, 2, 240, 320)
-	
-		onnx_inference_with_flow = onnx_inference.inference_with_flow(left_img , right_img, 
-															  sess_crestereo, sess_crestereo_no_flow,
-															  onnx_inference_no_flow, 
-															  img_shape=(480, 640))   
+		trt_depth[np.isinf(trt_depth)] = np.nan
+		trt_depth[trt_depth > 10] = np.nan
+		# logging.warning(f"Number of inf values in pt_depth: {np.sum(np.isinf(pt_depth))}")
 		
-		# logging.warning(f"onnx_inference_with_flow.shape: {onnx_inference_with_flow.shape}")
+		error = trt_depth - onnx_depth
+		# logging.warning(f"Number of inf values in error: {np.sum(np.isinf(error))}")
+		# logging.warning(f"error.max: {np.max(error)} error.min: {np.min(error)}")
+		# logging.warning(f"np.nanmax(error): {np.nanmax(error)} np.nanmin(error): {np.nanmin(error)}")
 		
-		# TRT INFERENCE --> 
-		
-		# TRT ENGINE => NO FLOW
-		ppi_trt_no_flow = trt_engine_no_flow.pre_process_input([left_img, right_img], 
-														 [(H // 2, W // 2), (H // 2, W // 2)])
-		trt_engine_no_flow.load_input(ppi_trt_no_flow)
-		trt_inference_outputs_no_flow =  trt_engine_no_flow.run_trt_inference()
-		trt_inference_output_no_flow = trt_inference_outputs_no_flow[0].reshape(1, 2, H // 2, W // 2)
-		trt_inference_output_no_flow_reshaped = np.squeeze(trt_inference_output_no_flow[:, 0, :, :])
-		zeros_arr = np.zeros(trt_inference_output_no_flow.shape)
-		
-		# visualize_inference_and_histogram(left, onnx_inference_no_flow_reshaped, trt_inference_output_no_flow_reshaped)
+		filename_npy = os.path.basename(onnx_file)
+		filename_png = filename_npy.replace('.npy', '.png')	
+		utils.write_legend_plot(error, f"{ONNX_VS_TRT_DEPTH_ERROR_HEATMAP}/{filename_png}")
+		utils_matplotlib.plot_histograms([utils_matplotlib.PLT(data=error,
+								    title='Depth Error Histogram', 
+									xlabel='Depth Error (meters)',
+									bins=100, range=(np.nanmin(error), np.nanmax(error)))], 
+									save_path=f"{ONNX_VS_TRT_DEPTH_ERROR_HIST}/{filename_png}", 
+									visualize= False)
 
-		# TRT ENGINE => WITH FLOW	
-		# ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, zeros_arr], 
-		# 									[(H, W), (H, W), None])
-		ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, trt_inference_output_no_flow], 
-											[(H, W), (H, W), None])
-		# ppi_trt = trt_engine_with_flow.pre_process_input([left_img, right_img, onnx_inference_no_flow], 
-		# 									[(H, W), (H, W), None])
-		trt_engine_with_flow.load_input(ppi_trt)
-		trt_inference_outputs =  trt_engine_with_flow.run_trt_inference()
-		trt_inference_output = trt_inference_outputs[0].reshape(1, 2, H, W)
-		trt_inference_output_reshaped = np.squeeze(trt_inference_output[:, 0, :, :]) # (H * W)
-		
-		# utils_matplotlib.plot_histograms_and_arrays([
-		# 										onnx_inference_no_flow_reshaped, 
-		# 									   	trt_inference_output_no_flow_reshaped,  
-		# 									   	onnx_inference_with_flow, 
-		# 									   	trt_inference_output_reshaped
-		# 									   ],
-		# 									   [
-		# 										onnx_inference_no_flow_reshaped, 
-		# 	   									trt_inference_output_no_flow_reshaped,  
-		# 									   	onnx_inference_with_flow, 
-		# 									   	trt_inference_output_reshaped
-		# 										])
-		
-		utils_matplotlib.plot_arrays(onnx_inference_with_flow, trt_inference_output_reshaped)
 
 if __name__ == "__main__":
-	coloredlogs.install(level="INFO", force=True)  # install a handler on the root logger
-	num_frames = 30
-	main(num_frames)
+	coloredlogs.install(level="WARN", force=True)  # install a handler on the root logger
+	main()

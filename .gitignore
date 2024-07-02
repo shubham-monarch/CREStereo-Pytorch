@@ -14,7 +14,7 @@ zed_vs_pt/**
 
 zed_vs_model/*
 *.zip
-
+onnx_vs_trt/*
 
 
 # tensorrt
